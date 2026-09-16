@@ -1,5 +1,9 @@
 package shared_api
 
+import (
+	"net/http"
+)
+
 const (
 	UserNameMinLen     = 4
 	UserNameMaxLen     = 16
@@ -9,18 +13,18 @@ const (
 
 func ValidateUserName(name string) Error {
 	if len(name) < UserNameMinLen {
-		return Error{422, "validation_fail", "too small user name"}
+		return Error{http.StatusUnprocessableEntity, "validation_fail", "too small user name"}
 	} else if len(name) > UserNameMaxLen {
-		return Error{422, "validation_fail", "too big user name"}
+		return Error{http.StatusUnprocessableEntity, "validation_fail", "too big user name"}
 	}
 	return Error{Code: 0}
 }
 
 func ValidateUserPassword(password string) Error {
 	if len(password) < UserNameMinLen {
-		return Error{422, "validation_fail", "too small user password"}
+		return Error{http.StatusUnprocessableEntity, "validation_fail", "too small user password"}
 	} else if len(password) > UserNameMaxLen {
-		return Error{422, "validation_fail", "too big user password"}
+		return Error{http.StatusUnprocessableEntity, "validation_fail", "too big user password"}
 	}
 	return Error{Code: 0}
 }

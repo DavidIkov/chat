@@ -1,36 +1,35 @@
 package shared_api
 
 type User struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	UID   uint   `json:"uid"`
+	Name  string `json:"name"`
+	Token string `json:"token"`
 }
 
-type LoginRequest struct {
+type LogInUserRequest struct {
 	Name     string `json:"name"`
 	Password string `json:"password"`
 }
 
-type LoginResponse struct {
-	Error Error  `json:"error"`
-	Token string `json:"token"`
-	User  User   `json:"user_info"`
+type LogInUserResponse struct {
+	Error Error `json:"error"`
+	User  User  `json:"user_info"`
 }
 
-type LogoutRequest struct {
+type LogOutUserRequest struct {
 	Token string `json:"token"`
 }
 
-type LogoutResponse struct {
+type LogOutUserResponse struct {
 	Error Error `json:"error"`
 }
 
-type RegistrationRequest struct {
+type UserRegistrationRequest struct {
 	Name     string `json:"name"`
 	Password string `json:"password"`
 }
 
-type RegistrationResponse struct {
-	Error Error  `json:"error"`
-	Token string `json:"token"`
-	User  User   `json:"user_info"`
+type UserRegistrationResponse struct {
+	Error Error `json:"error"`
+	User  User  `json:"user_info"`
 }
