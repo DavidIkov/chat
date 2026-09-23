@@ -2,4 +2,7 @@ module chat
 
 go 1.26.0
 
-require golang.org/x/crypto v0.57.0 // indirect
+require (
+	github.com/lib/pq v1.12.3 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
+)

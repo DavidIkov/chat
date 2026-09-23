@@ -1,7 +1,7 @@
 package shared_api
 
 import (
-	"net/http"
+	"errors"
 )
 
 const (
@@ -11,20 +11,20 @@ const (
 	UserPasswordMaxLen = 16
 )
 
-func ValidateUserName(name string) Error {
+func ValidateUserName(name string) error {
 	if len(name) < UserNameMinLen {
-		return Error{http.StatusUnprocessableEntity, "validation_fail", "too small user name"}
+		return errors.New("too small user name")
 	} else if len(name) > UserNameMaxLen {
-		return Error{http.StatusUnprocessableEntity, "validation_fail", "too big user name"}
+		return errors.New("too big user name")
 	}
-	return Error{Code: 0}
+	return nil
 }
 
-func ValidateUserPassword(password string) Error {
+func ValidateUserPassword(password string) error {
 	if len(password) < UserNameMinLen {
-		return Error{http.StatusUnprocessableEntity, "validation_fail", "too small user password"}
+		return errors.New("too small user password")
 	} else if len(password) > UserNameMaxLen {
-		return Error{http.StatusUnprocessableEntity, "validation_fail", "too big user password"}
+		return errors.New("too big user password")
 	}
-	return Error{Code: 0}
+	return nil
 }

@@ -6,22 +6,22 @@ type User struct {
 	Token string `json:"token"`
 }
 
-type LogInUserRequest struct {
+type UserLogInRequest struct {
 	Name     string `json:"name"`
 	Password string `json:"password"`
 }
 
-type LogInUserResponse struct {
-	Error Error `json:"error"`
-	User  User  `json:"user_info"`
+type UserLogInResponse struct {
+	Error *Error `json:"error,omitempty"`
+	User  *User  `json:"user_info,omitempty"`
 }
 
-type LogOutUserRequest struct {
+type UserLogOutRequest struct {
 	Token string `json:"token"`
 }
 
-type LogOutUserResponse struct {
-	Error Error `json:"error"`
+type UserLogOutResponse struct {
+	Error Error `json:"error,omitempty"`
 }
 
 type UserRegistrationRequest struct {
@@ -30,6 +30,6 @@ type UserRegistrationRequest struct {
 }
 
 type UserRegistrationResponse struct {
-	Error Error `json:"error"`
-	User  User  `json:"user_info"`
+	Error *Error `json:"error,omitempty"`
+	User  *User  `json:"user_info,omitempty"`
 }

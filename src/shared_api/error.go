@@ -1,7 +1,6 @@
 package shared_api
 
 type Error struct {
-	Code    int   `json:"code"`
-	Name    string `json:"name"`
+	Field    string `json:"field,omitempty"`
 	Message string `json:"message"`
 }
