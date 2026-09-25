@@ -1,8 +1,12 @@
 package shared_api
 
 type User struct {
+	UID  uint   `json:"uid"`
+	Name string `json:"name"`
+}
+
+type UserSession struct {
 	UID   uint   `json:"uid"`
-	Name  string `json:"name"`
 	Token string `json:"token"`
 }
 
@@ -12,8 +16,8 @@ type UserLogInRequest struct {
 }
 
 type UserLogInResponse struct {
-	Error *Error `json:"error,omitempty"`
-	User  *User  `json:"user_info,omitempty"`
+	Error       *Error       `json:"error,omitempty"`
+	UserSession *UserSession `json:"user_session,omitempty"`
 }
 
 type UserLogOutRequest struct {
@@ -21,7 +25,7 @@ type UserLogOutRequest struct {
 }
 
 type UserLogOutResponse struct {
-	Error Error `json:"error,omitempty"`
+	Error *Error `json:"error,omitempty"`
 }
 
 type UserRegistrationRequest struct {
@@ -30,6 +34,16 @@ type UserRegistrationRequest struct {
 }
 
 type UserRegistrationResponse struct {
+	Error       *Error       `json:"error,omitempty"`
+	UserSession *UserSession `json:"user_session,omitempty"`
+}
+
+type UsersGetRequest struct {
+	Token string `json:"token"`
+	UIDs  []uint `json:"uids"`
+}
+
+type UsersGetResponse struct {
 	Error *Error `json:"error,omitempty"`
-	User  *User  `json:"user_info,omitempty"`
+	Users []User `json:"users,omitempty"`
 }

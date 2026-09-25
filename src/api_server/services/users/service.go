@@ -1,0 +1,117 @@
+package users
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
+	"errors"
+	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
+)
+
+func hashPassword(password string) (string, error) {
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedPasswordBytes), nil
+}
+
+func createToken() string {
+	tokenBuff := make([]byte, 16)
+	rand.Read(tokenBuff)
+	return hex.EncodeToString(tokenBuff)
+
+}
+
+func (this *UsersService) RegisterUser(ctx context.Context, name string, password string) (*UserSession, error) {
+
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+	insertedUserRow := this.db.QueryRowContext(ctx, "insert into users (name,password_hash) values ($1, $2) returning uid", name, hashedPassword)
+	if err != nil {
+		return nil, err
+	}
+	var uid uint
+	err = insertedUserRow.Scan(&uid)
+	if err != nil {
+		return nil, err
+	}
+
+	this.usersSessions = append(this.usersSessions, UserSession{createToken(), uid})
+
+	newUser := &this.usersSessions[len(this.usersSessions)-1]
+
+	return newUser, nil
+}
+
+func (this *UsersService) LogInUser(ctx context.Context, name string, password string) (*UserSession, error) {
+
+	query := this.db.QueryRowContext(ctx, "select uid, password_hash from users where name=$1", name)
+
+	var uid uint
+	var passwordHash string
+	err := query.Scan(&uid, &passwordHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, InvalidCredentialsError
+	} else if err != nil {
+		return nil, err
+	} else if err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
+		return nil, InvalidCredentialsError
+	}
+
+	for i := range this.usersSessions {
+		user := &this.usersSessions[i]
+		if user.UID == uid {
+			return user, nil
+		}
+	}
+
+	this.usersSessions = append(this.usersSessions, UserSession{createToken(), uid})
+
+	return &this.usersSessions[len(this.usersSessions)-1], nil
+}
+
+func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
+	for i := range this.usersSessions {
+		if this.usersSessions[i].Token == token {
+			this.usersSessions[i] = this.usersSessions[len(this.usersSessions)-1]
+			this.usersSessions = this.usersSessions[:len(this.usersSessions)-1]
+			return nil
+		}
+	}
+	return TokenNotFoundError
+}
+
+func (this *UsersService) GetUsers(ctx context.Context, token string, uids []uint) ([]User, error) {
+
+	foundToken := false
+	for i := range this.usersSessions {
+		if this.usersSessions[i].Token == token {
+			foundToken = true
+			break
+		}
+	}
+	if !foundToken {
+		return nil, TokenNotFoundError
+	}
+
+	rows, err := this.db.QueryContext(ctx, "select uid, name from users where uid = any($1)", pq.Array(uids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]User, 0, len(uids))
+	for rows.Next() {
+		var user User
+		if err = rows.Scan(&user.UID, &user.Name); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}

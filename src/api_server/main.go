@@ -1,13 +1,13 @@
 package main
 
 import (
-	"chat/src/api_server/user"
+	"chat/src/api_server/handlers"
+	"chat/src/api_server/services"
+	"database/sql"
 	"flag"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"os"
-	"database/sql"
 )
 
 func main() {
@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 
 	if *listenURL == "" {
-		log.Fatal("addr cannot be empty")
+		log.Fatal("listenURL cannot be empty")
 	} else if *dbURL == "" {
 		log.Fatal("dbURL cannot be empty")
 	}
@@ -26,14 +26,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	usersManager, err := user.CreateUsersManager(db)
+	services, err := services.CreateServices(db)
 	if err != nil {
-		log.Println(err.Error())
-		os.Exit(1)
+		log.Fatal(err)
 	}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/user/register", usersManager.UserRegistrationHandler)
-	mux.HandleFunc("/user/login", usersManager.UserLogInHandler)
+
+	_, err = handlers.CreateHandlers(mux, services)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Println("Started listening on ", *listenURL)
 	if err := http.ListenAndServe(*listenURL, mux); err != nil {
