@@ -5,9 +5,9 @@ import (
 )
 
 func CreateUsers(db *sql.DB) (*UsersService, error) {
-	var manager UsersService
+	var service UsersService
 
-	manager.db = db
+	service.db = db
 
 	_, err := db.Exec(`
 create table if not exists users (
@@ -19,5 +19,5 @@ create table if not exists users (
 		return nil, err
 	}
 
-	return &manager, nil
+	return &service, nil
 }

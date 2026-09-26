@@ -32,18 +32,15 @@ func (this *UsersService) RegisterUser(ctx context.Context, name string, passwor
 		return nil, err
 	}
 	insertedUserRow := this.db.QueryRowContext(ctx, "insert into users (name,password_hash) values ($1, $2) returning uid", name, hashedPassword)
-	if err != nil {
-		return nil, err
-	}
 	var uid uint
 	err = insertedUserRow.Scan(&uid)
 	if err != nil {
 		return nil, err
 	}
 
-	this.usersSessions = append(this.usersSessions, UserSession{createToken(), uid})
+	this.sessions = append(this.sessions, UserSession{createToken(), uid})
 
-	newUser := &this.usersSessions[len(this.usersSessions)-1]
+	newUser := &this.sessions[len(this.sessions)-1]
 
 	return newUser, nil
 }
@@ -63,23 +60,23 @@ func (this *UsersService) LogInUser(ctx context.Context, name string, password s
 		return nil, InvalidCredentialsError
 	}
 
-	for i := range this.usersSessions {
-		user := &this.usersSessions[i]
+	for i := range this.sessions {
+		user := &this.sessions[i]
 		if user.UID == uid {
 			return user, nil
 		}
 	}
 
-	this.usersSessions = append(this.usersSessions, UserSession{createToken(), uid})
+	this.sessions = append(this.sessions, UserSession{createToken(), uid})
 
-	return &this.usersSessions[len(this.usersSessions)-1], nil
+	return &this.sessions[len(this.sessions)-1], nil
 }
 
 func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
-	for i := range this.usersSessions {
-		if this.usersSessions[i].Token == token {
-			this.usersSessions[i] = this.usersSessions[len(this.usersSessions)-1]
-			this.usersSessions = this.usersSessions[:len(this.usersSessions)-1]
+	for i := range this.sessions {
+		if this.sessions[i].Token == token {
+			this.sessions[i] = this.sessions[len(this.sessions)-1]
+			this.sessions = this.sessions[:len(this.sessions)-1]
 			return nil
 		}
 	}
@@ -89,8 +86,8 @@ func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
 func (this *UsersService) GetUsers(ctx context.Context, token string, uids []uint) ([]User, error) {
 
 	foundToken := false
-	for i := range this.usersSessions {
-		if this.usersSessions[i].Token == token {
+	for i := range this.sessions {
+		if this.sessions[i].Token == token {
 			foundToken = true
 			break
 		}

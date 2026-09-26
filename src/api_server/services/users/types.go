@@ -16,5 +16,5 @@ type UserSession struct {
 
 type UsersService struct {
 	db            *sql.DB
-	usersSessions []UserSession
+	sessions []UserSession
 }
