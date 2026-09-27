@@ -6,6 +6,7 @@ import (
 	"chat/src/api_server/handlers/middleware"
 	"chat/src/shared/api"
 	chatapi "chat/src/shared/api/chat"
+	"chat/src/shared/api/validator"
 	"net/http"
 )
 
@@ -15,10 +16,10 @@ func (this *ChatsHandler) CreateChatHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	name, name_error := api.ValidateChatName(request.Name)
+	name, name_error := validator.ValidateChatName(request.Name)
 	if name_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, chatapi.CreateChatResponse{
-			Error: &api.Error{Field: "name", Message: name_error.Error()},
+			Error: name_error,
 		})
 		return
 	}
@@ -42,10 +43,10 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	text, text_error := api.ValidateMessageText(request.Text)
+	text, text_error := validator.ValidateMessageText(request.Text)
 	if text_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, chatapi.SendMessageResponse{
-			Error: &api.Error{Field: "text", Message: text_error.Error()},
+			Error: text_error,
 		})
 		return
 	}

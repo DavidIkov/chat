@@ -6,6 +6,7 @@ import (
 	userservice "chat/src/api_server/services/users"
 	"chat/src/shared/api"
 	userapi "chat/src/shared/api/user"
+	"chat/src/shared/api/validator"
 	"errors"
 	"net/http"
 )
@@ -16,18 +17,18 @@ func (this *UsersHandler) UserRegistrationHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	name, name_error := api.ValidateUserName(request.Name)
+	name, name_error := validator.ValidateUserName(request.Name)
 	if name_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserRegistrationResponse{
-			Error: &api.Error{Field: "name", Message: name_error.Error()},
+			Error: name_error,
 		})
 		return
 	}
 
-	password, password_error := api.ValidateUserPassword(request.Password)
+	password, password_error := validator.ValidateUserPassword(request.Password)
 	if password_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserRegistrationResponse{
-			Error: &api.Error{Field: "password", Message: password_error.Error()},
+			Error: password_error,
 		})
 		return
 	}
@@ -60,18 +61,18 @@ func (this *UsersHandler) UserLogInHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	name, name_error := api.ValidateUserName(request.Name)
+	name, name_error := validator.ValidateUserName(request.Name)
 	if name_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserLogInResponse{
-			Error: &api.Error{Field: "name", Message: name_error.Error()},
+			Error: name_error,
 		})
 		return
 	}
 
-	password, password_error := api.ValidateUserPassword(request.Password)
+	password, password_error := validator.ValidateUserPassword(request.Password)
 	if password_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserLogInResponse{
-			Error: &api.Error{Field: "password", Message: password_error.Error()},
+			Error: password_error,
 		})
 		return
 	}
