@@ -21,9 +21,9 @@ func ValidateUserName(name string) error {
 }
 
 func ValidateUserPassword(password string) error {
-	if len(password) < UserNameMinLen {
+	if len(password) < UserPasswordMinLen {
 		return errors.New("too small user password")
-	} else if len(password) > UserNameMaxLen {
+	} else if len(password) > UserPasswordMaxLen {
 		return errors.New("too big user password")
 	}
 	return nil

@@ -20,9 +20,9 @@ type UserLogInResponse struct {
 	UserSession *UserSession `json:"user_session,omitempty"`
 }
 
-type UserLogOutRequest struct {
-	Token string `json:"token"`
-}
+// UserLogOutRequest is intentionally empty: the session token is read from the
+// "Authorization" header, so logging out carries no body.
+type UserLogOutRequest struct{}
 
 type UserLogOutResponse struct {
 	Error *Error `json:"error,omitempty"`
@@ -38,9 +38,10 @@ type UserRegistrationResponse struct {
 	UserSession *UserSession `json:"user_session,omitempty"`
 }
 
+// UsersGetRequest is decoded from the URL query, so its fields carry "form"
+// tags instead of JSON ones.
 type UsersGetRequest struct {
-	Token string `json:"token"`
-	UIDs  []uint `json:"uids"`
+	UIDs []uint `form:"uids"`
 }
 
 type UsersGetResponse struct {

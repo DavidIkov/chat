@@ -2,6 +2,7 @@ package main
 
 import (
 	"chat/src/api_server/handlers"
+	"chat/src/api_server/handlers/middleware"
 	"chat/src/api_server/services"
 	"database/sql"
 	"flag"
@@ -39,7 +40,7 @@ func main() {
 	}
 
 	log.Println("Started listening on ", *listenURL)
-	if err := http.ListenAndServe(*listenURL, mux); err != nil {
+	if err := http.ListenAndServe(*listenURL, middleware.Recover(mux)); err != nil {
 		log.Fatal(err)
 	}
 }

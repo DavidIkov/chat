@@ -84,19 +84,8 @@ func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
 	return TokenNotFoundError
 }
 
-func (this *UsersService) GetUsers(ctx context.Context, token string, uids []uint) ([]User, error) {
-
-	foundToken := false
-	for i := range this.sessions {
-		if this.sessions[i].Token == token {
-			foundToken = true
-			break
-		}
-	}
-	if !foundToken {
-		return nil, TokenNotFoundError
-	}
-
+// GetUsers returns the users with the given uids.
+func (this *UsersService) GetUsers(ctx context.Context, uids []uint) ([]User, error) {
 	rows, err := this.db.QueryContext(ctx, "select uid, name from users where uid = any($1)", pq.Array(uids))
 	if err != nil {
 		return nil, err
@@ -113,7 +102,6 @@ func (this *UsersService) GetUsers(ctx context.Context, token string, uids []uin
 	}
 	return users, rows.Err()
 }
-
 
 func (this *UsersService) GetUserUIDByToken(token string) (shared.UID, error) {
 	for i := range this.sessions {
