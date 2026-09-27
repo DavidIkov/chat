@@ -6,3 +6,4 @@ import (
 
 var InvalidCredentialsError = errors.New("invalid credentials")
 var TokenNotFoundError = errors.New("token not found")
+var DuplicateUserNameError = errors.New("user name already taken")

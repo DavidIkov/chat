@@ -4,8 +4,6 @@ import (
 	"chat/src/shared"
 )
 
-// contextKey is unexported so that no other package can collide with the value
-// stored by this package.
 type contextKey struct{}
 
 // Session is the caller authenticated from the "Authorization" header. It keeps

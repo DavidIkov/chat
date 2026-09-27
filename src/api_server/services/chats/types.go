@@ -20,6 +20,10 @@ type Message struct {
 	Text       string      `json:"text"`
 }
 
+type Member struct {
+	UserUID shared.UID
+}
+
 type ChatsService struct {
 	db        *sql.DB
 	joinLinks *joinLinkStore

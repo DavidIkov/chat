@@ -13,8 +13,6 @@ func withSession(ctx context.Context, session Session) context.Context {
 	return context.WithValue(ctx, contextKey{}, session)
 }
 
-// SessionFromContext returns the session stored by RequireUser. ok is false when
-// the route was not wrapped with RequireUser.
 func SessionFromContext(ctx context.Context) (Session, bool) {
 	session, ok := ctx.Value(contextKey{}).(Session)
 	return session, ok
@@ -40,7 +38,6 @@ func RequireUser(users *userservice.UsersService, next http.HandlerFunc) http.Ha
 	}
 }
 
-// tokenFromRequest extracts the bearer token of the request.
 func tokenFromRequest(r *http.Request) (string, error) {
 	header := r.Header.Get("Authorization")
 	if !strings.HasPrefix(header, bearerPrefix) {

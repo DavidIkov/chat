@@ -14,10 +14,6 @@ type UserLogInResponse struct {
 	UserSession *UserSession `json:"user_session,omitempty"`
 }
 
-// UserLogOutRequest is intentionally empty: the session token is read from the
-// "Authorization" header, so logging out carries no body.
-type UserLogOutRequest struct{}
-
 type UserLogOutResponse struct {
 	Error *api.Error `json:"error,omitempty"`
 }

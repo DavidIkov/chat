@@ -16,22 +16,30 @@ func (this *UsersHandler) UserRegistrationHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	if name_error := api.ValidateUserName(request.Name); name_error != nil {
+	name, name_error := api.ValidateUserName(request.Name)
+	if name_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserRegistrationResponse{
 			Error: &api.Error{Field: "name", Message: name_error.Error()},
 		})
 		return
 	}
 
-	if password_error := api.ValidateUserPassword(request.Password); password_error != nil {
+	password, password_error := api.ValidateUserPassword(request.Password)
+	if password_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserRegistrationResponse{
 			Error: &api.Error{Field: "password", Message: password_error.Error()},
 		})
 		return
 	}
 
-	user, err := this.Services.Users.RegisterUser(r.Context(), request.Name, request.Password)
+	user, err := this.Services.Users.RegisterUser(r.Context(), name, password)
 	if err != nil {
+		if errors.Is(err, userservice.DuplicateUserNameError) {
+			middleware.WriteJSON(w, http.StatusConflict, userapi.UserRegistrationResponse{
+				Error: &api.Error{Field: "name", Message: err.Error()},
+			})
+			return
+		}
 		middleware.WriteJSON(w, http.StatusInternalServerError, userapi.UserRegistrationResponse{
 			Error: &api.Error{Message: err.Error()},
 		})
@@ -52,21 +60,23 @@ func (this *UsersHandler) UserLogInHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if name_error := api.ValidateUserName(request.Name); name_error != nil {
+	name, name_error := api.ValidateUserName(request.Name)
+	if name_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserLogInResponse{
 			Error: &api.Error{Field: "name", Message: name_error.Error()},
 		})
 		return
 	}
 
-	if password_error := api.ValidateUserPassword(request.Password); password_error != nil {
+	password, password_error := api.ValidateUserPassword(request.Password)
+	if password_error != nil {
 		middleware.WriteJSON(w, http.StatusUnprocessableEntity, userapi.UserLogInResponse{
 			Error: &api.Error{Field: "password", Message: password_error.Error()},
 		})
 		return
 	}
 
-	user, err := this.Services.Users.LogInUser(r.Context(), request.Name, request.Password)
+	user, err := this.Services.Users.LogInUser(r.Context(), name, password)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, userservice.InvalidCredentialsError) {

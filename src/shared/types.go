@@ -1,6 +1,6 @@
 package shared
 
-// all timestamps are using unix ms utc
+// All timestamps are Unix milliseconds in UTC.
 type Time = int64
 
 type UID = uint32

@@ -18,3 +18,7 @@ type Message struct {
 	CreatedAt  shared.Time `json:"created_at"`
 	Text       string      `json:"text"`
 }
+
+type Member struct {
+	UserUID shared.UID `json:"user_uid"`
+}

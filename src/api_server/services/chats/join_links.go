@@ -18,10 +18,6 @@ type JoinLink struct {
 	RemainingUses uint        // 0 means the link can be used unlimited times
 }
 
-// joinLinkStore is the in-memory store of join links keyed by their token.
-//
-// Join links are process-local state: they are created and read by the chats
-// service without any locking for now.
 type joinLinkStore struct {
 	links map[string]JoinLink
 }
@@ -40,10 +36,17 @@ func (this *joinLinkStore) isExpired(link JoinLink) bool {
 	return link.ExpiresAt != 0 && shared.Time(time.Now().UnixMilli()) >= link.ExpiresAt
 }
 
-// sweep drops every expired link so that stale links do not accumulate forever.
-func (this *joinLinkStore) sweep() {
+func (this *joinLinkStore) removeExpired() {
 	for token, link := range this.links {
 		if this.isExpired(link) {
+			delete(this.links, token)
+		}
+	}
+}
+
+func (this *joinLinkStore) removeChatLinks(chatUID shared.UID) {
+	for token, link := range this.links {
+		if link.ChatUID == chatUID {
 			delete(this.links, token)
 		}
 	}
@@ -55,7 +58,7 @@ func (this *joinLinkStore) sweep() {
 // the server stops. maxUses caps how many users can join with it: 0 means
 // unlimited.
 func (this *ChatsService) CreateJoinLink(chatUID shared.UID, lifetimeSeconds int64, maxUses uint) JoinLink {
-	this.joinLinks.sweep()
+	this.joinLinks.removeExpired()
 
 	link := JoinLink{
 		Token:         createJoinLinkToken(),
@@ -70,8 +73,6 @@ func (this *ChatsService) CreateJoinLink(chatUID shared.UID, lifetimeSeconds int
 	return link
 }
 
-// lookupJoinLink returns the link behind token. ok is false when the token is
-// unknown or has expired.
 func (this *ChatsService) lookupJoinLink(token string) (JoinLink, bool) {
 	link, ok := this.joinLinks.links[token]
 	if !ok {

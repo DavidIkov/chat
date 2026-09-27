@@ -15,8 +15,7 @@ type CreateChatResponse struct {
 }
 
 type SendMessageRequest struct {
-	ChatUID shared.UID `json:"chat_uid"`
-	Text    string     `json:"text"`
+	Text string `json:"text"`
 }
 
 type SendMessageResponse struct {
@@ -25,7 +24,6 @@ type SendMessageResponse struct {
 }
 
 type CreateJoinLinkRequest struct {
-	ChatUID shared.UID `json:"chat_uid"`
 	// LifetimeSeconds is how long the link stays valid; 0 means forever.
 	LifetimeSeconds int64 `json:"lifetime_seconds"`
 	// MaxUses caps the number of users that can join; 0 means unlimited.
@@ -46,4 +44,11 @@ type JoinChatRequest struct {
 type JoinChatResponse struct {
 	Error   *api.Error `json:"error,omitempty"`
 	ChatUID shared.UID `json:"chat_uid,omitempty"`
+}
+
+// LeaveChatResponse is intentionally empty on success, mirroring
+// UserLogOutResponse: the chat uid comes from the URL path, so leaving carries
+// no body.
+type LeaveChatResponse struct {
+	Error *api.Error `json:"error,omitempty"`
 }

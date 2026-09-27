@@ -19,7 +19,7 @@ func hashPassword(password string) (string, error) {
 	return string(hashedPasswordBytes), nil
 }
 
-func createToken() string {
+func createSessionToken() string {
 	tokenBuff := make([]byte, 16)
 	rand.Read(tokenBuff)
 	return hex.EncodeToString(tokenBuff)
@@ -27,6 +27,15 @@ func createToken() string {
 }
 
 func (this *UsersService) RegisterUser(ctx context.Context, name string, password string) (*UserSession, error) {
+
+	var nameTaken bool
+	err := this.db.QueryRowContext(ctx, "select exists (select 1 from users where name = $1)", name).Scan(&nameTaken)
+	if err != nil {
+		return nil, err
+	}
+	if nameTaken {
+		return nil, DuplicateUserNameError
+	}
 
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
@@ -39,7 +48,7 @@ func (this *UsersService) RegisterUser(ctx context.Context, name string, passwor
 		return nil, err
 	}
 
-	this.sessions = append(this.sessions, UserSession{createToken(), uid})
+	this.sessions = append(this.sessions, UserSession{createSessionToken(), uid})
 
 	newUser := &this.sessions[len(this.sessions)-1]
 
@@ -68,7 +77,7 @@ func (this *UsersService) LogInUser(ctx context.Context, name string, password s
 		}
 	}
 
-	this.sessions = append(this.sessions, UserSession{createToken(), uid})
+	this.sessions = append(this.sessions, UserSession{createSessionToken(), uid})
 
 	return &this.sessions[len(this.sessions)-1], nil
 }
@@ -84,7 +93,6 @@ func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
 	return TokenNotFoundError
 }
 
-// GetUsers returns the users with the given uids.
 func (this *UsersService) GetUsers(ctx context.Context, uids []uint) ([]User, error) {
 	rows, err := this.db.QueryContext(ctx, "select uid, name from users where uid = any($1)", pq.Array(uids))
 	if err != nil {

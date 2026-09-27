@@ -22,7 +22,6 @@ func (this *ChatsService) CreateChat(ctx context.Context, chatName string, userU
 		return nil, err
 	}
 
-	// The creator is a member of the chat by default.
 	if _, err := tx.ExecContext(ctx, "insert into chat_members (chat_uid, user_uid) values ($1, $2)", chat.ChatUID, userUID); err != nil {
 		return nil, err
 	}
@@ -44,7 +43,6 @@ func (this *ChatsService) SendMessage(ctx context.Context, chatUID shared.UID, u
 
 }
 
-// GetChats returns the chats with the given uids that userUID is a member of.
 func (this *ChatsService) GetChats(ctx context.Context, userUID shared.UID, uids []shared.UID) ([]Chat, error) {
 	chatsRows, err := this.db.QueryContext(ctx, "select c.uid, c.name, c.creator_user_uid, c.created_at from chats c join chat_members m on m.chat_uid = c.uid where m.user_uid = $1 and c.uid = any($2)", userUID, pq.Array(uids))
 	if err != nil {
@@ -63,7 +61,6 @@ func (this *ChatsService) GetChats(ctx context.Context, userUID shared.UID, uids
 	return chats, chatsRows.Err()
 }
 
-// IsChatMember reports whether userUID belongs to the chat chatUID.
 func (this *ChatsService) IsChatMember(ctx context.Context, chatUID shared.UID, userUID shared.UID) (bool, error) {
 	var isMember bool
 	err := this.db.QueryRowContext(ctx, "select exists (select 1 from chat_members where chat_uid = $1 and user_uid = $2)", chatUID, userUID).Scan(&isMember)
@@ -138,4 +135,65 @@ func (this *ChatsService) GetMessages(ctx context.Context, chatUID shared.UID, l
 	}
 
 	return messages, nil
+}
+
+// GetChatMembers returns the members of chatUID ordered by uid so that the
+// output is stable.
+func (this *ChatsService) GetChatMembers(ctx context.Context, chatUID shared.UID) ([]Member, error) {
+	membersRows, err := this.db.QueryContext(ctx, "select user_uid from chat_members where chat_uid = $1 order by user_uid", chatUID)
+	if err != nil {
+		return nil, err
+	}
+	defer membersRows.Close()
+
+	members := make([]Member, 0)
+	for membersRows.Next() {
+		var member Member
+		if err := membersRows.Scan(&member.UserUID); err != nil {
+			return nil, err
+		}
+		members = append(members, member)
+	}
+	return members, membersRows.Err()
+}
+
+// LeaveChat removes userUID from chatUID. A missing membership row is a no-op.
+// When the last member leaves, the chat is deleted: its messages go first for
+// foreign-key ordering, then the chat itself, and finally every in-memory join
+// link pointing at it is purged so that a stale link cannot rejoin a deleted
+// chat.
+func (this *ChatsService) LeaveChat(ctx context.Context, chatUID shared.UID, userUID shared.UID) error {
+	tx, err := this.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, "delete from chat_members where chat_uid = $1 and user_uid = $2", chatUID, userUID); err != nil {
+		return err
+	}
+
+	var remainingMembers int
+	if err := tx.QueryRowContext(ctx, "select count(*) from chat_members where chat_uid = $1", chatUID).Scan(&remainingMembers); err != nil {
+		return err
+	}
+
+	if remainingMembers == 0 {
+		if _, err := tx.ExecContext(ctx, "delete from messages where chat_uid = $1", chatUID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "delete from chats where uid = $1", chatUID); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	if remainingMembers == 0 {
+		this.joinLinks.removeChatLinks(chatUID)
+	}
+
+	return nil
 }

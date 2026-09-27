@@ -5,8 +5,7 @@ import (
 	"net/http"
 )
 
-// Recover turns a panic into a 500 response instead of aborting the connection,
-// logging the recovered value. It is meant to wrap the whole mux once.
+// Recover turns a panic into a 500 response and should wrap the whole mux once.
 func Recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
