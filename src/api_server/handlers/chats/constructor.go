@@ -11,5 +11,7 @@ func CreateChats(mux *http.ServeMux, services *services.Services) *ChatsHandler 
 	mux.HandleFunc("/chat/send_message", handler.SendMessageHandler)
 	mux.HandleFunc("/chat/get_chats", handler.GetChatsHandler)
 	mux.HandleFunc("/chat/get_messages", handler.GetChatMessagesHandler)
+	mux.HandleFunc("/chat/create_join_link", handler.CreateJoinLinkHandler)
+	mux.HandleFunc("/chat/join_chat", handler.JoinChatHandler)
 	return &handler
 }

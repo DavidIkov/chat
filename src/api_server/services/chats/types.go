@@ -21,5 +21,6 @@ type Message struct {
 }
 
 type ChatsService struct {
-	db *sql.DB
+	db        *sql.DB
+	joinLinks *joinLinkStore
 }

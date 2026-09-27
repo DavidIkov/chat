@@ -9,9 +9,25 @@ import (
 
 func (this *ChatsService) CreateChat(ctx context.Context, chatName string, userUID shared.UID) (*Chat, error) {
 	curTime := shared.Time(time.Now().UnixMilli())
-	chatRow := this.db.QueryRowContext(ctx, "insert into chats (name, creator_user_uid,created_at) values ($1, $2, $3) returning uid, name, creator_user_uid, created_at", chatName, userUID, curTime)
+
+	tx, err := this.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	chatRow := tx.QueryRowContext(ctx, "insert into chats (name, creator_user_uid, created_at) values ($1, $2, $3) returning uid, name, creator_user_uid, created_at", chatName, userUID, curTime)
 	var chat Chat
 	if err := chatRow.Scan(&chat.ChatUID, &chat.Name, &chat.CreatorUserUID, &chat.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	// The creator is a member of the chat by default.
+	if _, err := tx.ExecContext(ctx, "insert into chat_members (chat_uid, user_uid) values ($1, $2)", chat.ChatUID, userUID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	return &chat, nil
@@ -28,8 +44,9 @@ func (this *ChatsService) SendMessage(ctx context.Context, chatUID shared.UID, u
 
 }
 
-func (this *ChatsService) GetChats(ctx context.Context, uids []shared.UID) ([]Chat, error) {
-	chatsRows, err := this.db.QueryContext(ctx, "select uid, name, creator_user_uid, created_at from chats where uid = any($1)", pq.Array(uids))
+// GetChats returns the chats with the given uids that userUID is a member of.
+func (this *ChatsService) GetChats(ctx context.Context, userUID shared.UID, uids []shared.UID) ([]Chat, error) {
+	chatsRows, err := this.db.QueryContext(ctx, "select c.uid, c.name, c.creator_user_uid, c.created_at from chats c join chat_members m on m.chat_uid = c.uid where m.user_uid = $1 and c.uid = any($2)", userUID, pq.Array(uids))
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +60,32 @@ func (this *ChatsService) GetChats(ctx context.Context, uids []shared.UID) ([]Ch
 		}
 		chats = append(chats, chat)
 	}
-	return chats, nil
+	return chats, chatsRows.Err()
+}
+
+// IsChatMember reports whether userUID belongs to the chat chatUID.
+func (this *ChatsService) IsChatMember(ctx context.Context, chatUID shared.UID, userUID shared.UID) (bool, error) {
+	var isMember bool
+	err := this.db.QueryRowContext(ctx, "select exists (select 1 from chat_members where chat_uid = $1 and user_uid = $2)", chatUID, userUID).Scan(&isMember)
+	if err != nil {
+		return false, err
+	}
+	return isMember, nil
+}
+
+// JoinChat adds userUID as a member of chatUID. It reports whether a new
+// membership was created: re-joining is a no-op returning false, so a limited
+// invite is not consumed when the user is already a member.
+func (this *ChatsService) JoinChat(ctx context.Context, chatUID shared.UID, userUID shared.UID) (bool, error) {
+	result, err := this.db.ExecContext(ctx, "insert into chat_members (chat_uid, user_uid) values ($1, $2) on conflict do nothing", chatUID, userUID)
+	if err != nil {
+		return false, err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rowsAffected > 0, nil
 }
 
 // GetMessages returns messages of a chat ordered chronologically (oldest first).

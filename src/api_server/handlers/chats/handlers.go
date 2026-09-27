@@ -1,20 +1,18 @@
 package chats
 
 import (
+	chatservice "chat/src/api_server/services/chats"
 	userservice "chat/src/api_server/services/users"
 	"chat/src/shared"
 	"chat/src/shared_api"
 	"chat/src/shared_api/chat"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/go-playground/form/v4"
 	"net/http"
 	"strings"
 )
-
-const defaultMessagesLimit = 50
-
-const bearerPrefix = "Bearer "
 
 var queryDecoder = form.NewDecoder()
 
@@ -33,10 +31,29 @@ func (this *ChatsHandler) getUserUIDFromRequest(r *http.Request) (shared.UID, er
 }
 
 func authStatus(err error) int {
-	if errors.Is(err, userservice.TokenNotFoundError) {
+	switch {
+	case errors.Is(err, userservice.TokenNotFoundError):
 		return http.StatusUnauthorized
+	case errors.Is(err, errNotChatMember):
+		return http.StatusForbidden
+	case errors.Is(err, chatservice.InvalidJoinLinkError):
+		return http.StatusForbidden
+	default:
+		return http.StatusInternalServerError
 	}
-	return http.StatusInternalServerError
+}
+
+// ensureChatMember returns nil when userUID is a member of chatUID,
+// errNotChatMember when it is not, and the underlying error otherwise.
+func (this *ChatsHandler) ensureChatMember(ctx context.Context, userUID shared.UID, chatUID shared.UID) error {
+	isMember, err := this.Services.Chats.IsChatMember(ctx, chatUID, userUID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return errNotChatMember
+	}
+	return nil
 }
 
 func (this *ChatsHandler) CreateChatHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +117,13 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if err := this.ensureChatMember(r.Context(), userUID, request.ChatUID); err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "chat_uid", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	message, err := this.Services.Chats.SendMessage(r.Context(), request.ChatUID, userUID, request.Text)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -129,14 +153,16 @@ func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request
 
 	var response chat.GetChatsResponse
 
-	if _, err := this.getUserUIDFromRequest(r); err != nil {
+	userUID, err := this.getUserUIDFromRequest(r)
+	if err != nil {
 		w.WriteHeader(authStatus(err))
 		response.Error = &shared_api.Error{Field: "token", Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	chats, err := this.Services.Chats.GetChats(r.Context(), request.UIDs)
+	// GetChats only returns chats the acting user is a member of.
+	chats, err := this.Services.Chats.GetChats(r.Context(), userUID, request.UIDs)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response.Error = &shared_api.Error{Message: err.Error()}
@@ -174,9 +200,17 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 
 	var response chat.GetChatMessagesResponse
 
-	if _, err := this.getUserUIDFromRequest(r); err != nil {
+	userUID, err := this.getUserUIDFromRequest(r)
+	if err != nil {
 		w.WriteHeader(authStatus(err))
 		response.Error = &shared_api.Error{Field: "token", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if err := this.ensureChatMember(r.Context(), userUID, request.ChatUID); err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "chat_uid", Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
@@ -205,6 +239,82 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 			Text:       foundMessage.Text,
 		})
 	}
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request chat.CreateJoinLinkRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var response chat.CreateJoinLinkResponse
+
+	userUID, err := this.getUserUIDFromRequest(r)
+	if err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "token", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if err := this.ensureChatMember(r.Context(), userUID, request.ChatUID); err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "chat_uid", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	link := this.Services.Chats.CreateJoinLink(request.ChatUID, request.LifetimeSeconds, request.MaxUses)
+
+	response.Token = link.Token
+	response.ExpiresAt = link.ExpiresAt
+
+	json.NewEncoder(w).Encode(response)
+}
+
+func (this *ChatsHandler) JoinChatHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request chat.JoinChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var response chat.JoinChatResponse
+
+	userUID, err := this.getUserUIDFromRequest(r)
+	if err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "token", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	chatUID, err := this.Services.Chats.JoinChatByLink(r.Context(), request.Token, userUID)
+	if err != nil {
+		w.WriteHeader(authStatus(err))
+		response.Error = &shared_api.Error{Field: "join_token", Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	response.ChatUID = chatUID
 
 	json.NewEncoder(w).Encode(response)
 }
