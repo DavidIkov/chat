@@ -21,7 +21,6 @@ otherwise only last messages are returned.
 Amount of messages is limited by Limit.
 */
 type GetChatMessagesRequest struct {
-	Token            string     `form:"token"`
 	ChatUID          shared.UID `form:"chat_uid"`
 	Limit            uint       `form:"limit"`
 	BeforeMessageUID shared.UID `form:"before_message_uid,omitempty"`

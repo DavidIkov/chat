@@ -1,6 +1,7 @@
 package users
 
 import (
+	"chat/src/shared"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -111,4 +112,14 @@ func (this *UsersService) GetUsers(ctx context.Context, token string, uids []uin
 		users = append(users, user)
 	}
 	return users, rows.Err()
+}
+
+
+func (this *UsersService) GetUserUIDByToken(token string) (shared.UID, error) {
+	for i := range this.sessions {
+		if this.sessions[i].Token == token {
+			return shared.UID(this.sessions[i].UID), nil
+		}
+	}
+	return 0, TokenNotFoundError
 }
