@@ -2,6 +2,7 @@ package chats
 
 import (
 	"chat/src/api_server/handlers/auth"
+	chatsmiddleware "chat/src/api_server/handlers/chats/middleware"
 	"chat/src/api_server/handlers/middleware"
 	"chat/src/shared/api"
 	chatapi "chat/src/shared/api/chat"
@@ -50,7 +51,7 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	session, _ := auth.SessionFromContext(r.Context())
-	chatUID, _ := ChatUIDFromContext(r.Context())
+	chatUID, _ := chatsmiddleware.ChatUIDFromContext(r.Context())
 
 	message, err := this.Services.Chats.SendMessage(r.Context(), chatUID, session.UID, text)
 	if err != nil {
@@ -99,7 +100,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	chatUID, _ := ChatUIDFromContext(r.Context())
+	chatUID, _ := chatsmiddleware.ChatUIDFromContext(r.Context())
 
 	limit := request.Limit
 	if limit == 0 {
@@ -130,7 +131,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 }
 
 func (this *ChatsHandler) GetChatMembersHandler(w http.ResponseWriter, r *http.Request) {
-	chatUID, _ := ChatUIDFromContext(r.Context())
+	chatUID, _ := chatsmiddleware.ChatUIDFromContext(r.Context())
 
 	members, err := this.Services.Chats.GetChatMembers(r.Context(), chatUID)
 	if err != nil {
@@ -155,7 +156,7 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	chatUID, _ := ChatUIDFromContext(r.Context())
+	chatUID, _ := chatsmiddleware.ChatUIDFromContext(r.Context())
 
 	link := this.Services.Chats.CreateJoinLink(chatUID, request.LifetimeSeconds, request.MaxUses)
 
@@ -167,10 +168,10 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 
 func (this *ChatsHandler) LeaveChatHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := auth.SessionFromContext(r.Context())
-	chatUID, _ := ChatUIDFromContext(r.Context())
+	chatUID, _ := chatsmiddleware.ChatUIDFromContext(r.Context())
 
 	if err := this.Services.Chats.LeaveChat(r.Context(), chatUID, session.UID); err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.LeaveChatResponse{
+		middleware.WriteJSON(w, chatsmiddleware.ChatsErrorStatus(err), chatapi.LeaveChatResponse{
 			Error: &api.Error{Message: err.Error()},
 		})
 		return
@@ -189,7 +190,7 @@ func (this *ChatsHandler) JoinChatHandler(w http.ResponseWriter, r *http.Request
 
 	chatUID, err := this.Services.Chats.JoinChatByLink(r.Context(), request.Token, session.UID)
 	if err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.JoinChatResponse{
+		middleware.WriteJSON(w, chatsmiddleware.ChatsErrorStatus(err), chatapi.JoinChatResponse{
 			Error: &api.Error{Field: "join_token", Message: err.Error()},
 		})
 		return

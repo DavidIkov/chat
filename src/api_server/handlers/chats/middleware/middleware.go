@@ -1,32 +1,17 @@
-package chats
+package middleware
 
 import (
 	"chat/src/api_server/handlers/auth"
-	"chat/src/api_server/handlers/middleware"
+	httpmiddleware "chat/src/api_server/handlers/middleware"
 	chatservice "chat/src/api_server/services/chats"
 	"chat/src/shared"
 	"chat/src/shared/api"
-	"context"
-	"errors"
 	"net/http"
 	"strconv"
 )
 
-type contextKey struct{}
-
-var errInvalidChatUID = errors.New("invalid chat_uid")
-
-func withChatUID(ctx context.Context, chatUID shared.UID) context.Context {
-	return context.WithValue(ctx, contextKey{}, chatUID)
-}
-
-func ChatUIDFromContext(ctx context.Context) (shared.UID, bool) {
-	chatUID, ok := ctx.Value(contextKey{}).(shared.UID)
-	return chatUID, ok
-}
-
 func chatUIDFromPath(r *http.Request) (shared.UID, error) {
-	raw := r.PathValue(chatUIDPathKey)
+	raw := r.PathValue(ChatUIDPathKey)
 	parsed, err := strconv.ParseUint(raw, 10, 32)
 	if err != nil || parsed == 0 {
 		return 0, errInvalidChatUID
@@ -35,9 +20,9 @@ func chatUIDFromPath(r *http.Request) (shared.UID, error) {
 }
 
 func writeChatError(w http.ResponseWriter, status int, message string) {
-	middleware.WriteJSON(w, status, struct {
+	httpmiddleware.WriteJSON(w, status, struct {
 		Error *api.Error `json:"error,omitempty"`
-	}{Error: &api.Error{Field: chatUIDPathKey, Message: message}})
+	}{Error: &api.Error{Field: ChatUIDPathKey, Message: message}})
 }
 
 // RequireChatMember must be wrapped by auth.RequireUser, which resolves the
@@ -63,15 +48,5 @@ func RequireChatMember(chats *chatservice.ChatsService, next http.HandlerFunc) h
 		}
 
 		next(w, r.WithContext(withChatUID(r.Context(), chatUID)))
-	}
-}
-
-// chatsErrorStatus maps a chats business error to the HTTP status to return.
-func chatsErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, chatservice.InvalidJoinLinkError):
-		return http.StatusForbidden
-	default:
-		return http.StatusInternalServerError
 	}
 }
