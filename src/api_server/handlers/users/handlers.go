@@ -47,12 +47,9 @@ func (this *UsersHandler) UserRegistrationHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	var response userapi.UserRegistrationResponse
-	if user != nil {
-		response.UserSession = &userapi.UserSession{UID: user.UID, Token: user.Token}
-	}
-
-	middleware.WriteJSON(w, http.StatusOK, response)
+	middleware.WriteJSON(w, http.StatusOK, userapi.UserRegistrationResponse{
+		UserSession: &userapi.UserSession{UID: user.UID, Token: user.Token},
+	})
 }
 
 func (this *UsersHandler) UserLogInHandler(w http.ResponseWriter, r *http.Request) {
@@ -89,12 +86,9 @@ func (this *UsersHandler) UserLogInHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var response userapi.UserLogInResponse
-	if user != nil {
-		response.UserSession = &userapi.UserSession{UID: user.UID, Token: user.Token}
-	}
-
-	middleware.WriteJSON(w, http.StatusOK, response)
+	middleware.WriteJSON(w, http.StatusOK, userapi.UserLogInResponse{
+		UserSession: &userapi.UserSession{UID: user.UID, Token: user.Token},
+	})
 }
 
 func (this *UsersHandler) UserLogOutHandler(w http.ResponseWriter, r *http.Request) {

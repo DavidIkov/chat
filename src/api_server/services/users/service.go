@@ -26,36 +26,38 @@ func createSessionToken() string {
 
 }
 
-func (this *UsersService) RegisterUser(ctx context.Context, name string, password string) (*UserSession, error) {
-
-	var nameTaken bool
-	err := this.db.QueryRowContext(ctx, "select exists (select 1 from users where name = $1)", name).Scan(&nameTaken)
-	if err != nil {
-		return nil, err
-	}
-	if nameTaken {
-		return nil, DuplicateUserNameError
-	}
-
+func (this *UsersService) RegisterUser(ctx context.Context, name string, password string) (UserSession, error) {
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
-		return nil, err
+		return UserSession{}, err
 	}
+
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	var nameTaken bool
+	err = this.db.QueryRowContext(ctx, "select exists (select 1 from users where name = $1)", name).Scan(&nameTaken)
+	if err != nil {
+		return UserSession{}, err
+	}
+	if nameTaken {
+		return UserSession{}, DuplicateUserNameError
+	}
+
 	insertedUserRow := this.db.QueryRowContext(ctx, "insert into users (name,password_hash) values ($1, $2) returning uid", name, hashedPassword)
 	var uid uint
 	err = insertedUserRow.Scan(&uid)
 	if err != nil {
-		return nil, err
+		return UserSession{}, err
 	}
 
-	this.sessions = append(this.sessions, UserSession{createSessionToken(), uid})
+	session := UserSession{createSessionToken(), uid}
+	this.sessions = append(this.sessions, session)
 
-	newUser := &this.sessions[len(this.sessions)-1]
-
-	return newUser, nil
+	return session, nil
 }
 
-func (this *UsersService) LogInUser(ctx context.Context, name string, password string) (*UserSession, error) {
+func (this *UsersService) LogInUser(ctx context.Context, name string, password string) (UserSession, error) {
 
 	query := this.db.QueryRowContext(ctx, "select uid, password_hash from users where name=$1", name)
 
@@ -63,26 +65,32 @@ func (this *UsersService) LogInUser(ctx context.Context, name string, password s
 	var passwordHash string
 	err := query.Scan(&uid, &passwordHash)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, InvalidCredentialsError
+		return UserSession{}, InvalidCredentialsError
 	} else if err != nil {
-		return nil, err
+		return UserSession{}, err
 	} else if err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
-		return nil, InvalidCredentialsError
+		return UserSession{}, InvalidCredentialsError
 	}
 
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
 	for i := range this.sessions {
-		user := &this.sessions[i]
-		if user.UID == uid {
-			return user, nil
+		if this.sessions[i].UID == uid {
+			return this.sessions[i], nil
 		}
 	}
 
-	this.sessions = append(this.sessions, UserSession{createSessionToken(), uid})
+	session := UserSession{createSessionToken(), uid}
+	this.sessions = append(this.sessions, session)
 
-	return &this.sessions[len(this.sessions)-1], nil
+	return session, nil
 }
 
 func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
 	for i := range this.sessions {
 		if this.sessions[i].Token == token {
 			this.sessions[i] = this.sessions[len(this.sessions)-1]
@@ -112,6 +120,9 @@ func (this *UsersService) GetUsers(ctx context.Context, uids []uint) ([]User, er
 }
 
 func (this *UsersService) GetUserUIDByToken(token string) (shared.UID, error) {
+	this.mutex.RLock()
+	defer this.mutex.RUnlock()
+
 	for i := range this.sessions {
 		if this.sessions[i].Token == token {
 			return shared.UID(this.sessions[i].UID), nil

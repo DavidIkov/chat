@@ -2,6 +2,7 @@ package users
 
 import (
 	"database/sql"
+	"sync"
 )
 
 type User struct {
@@ -15,6 +16,7 @@ type UserSession struct {
 }
 
 type UsersService struct {
-	db            *sql.DB
+	db       *sql.DB
+	mutex    sync.RWMutex
 	sessions []UserSession
 }

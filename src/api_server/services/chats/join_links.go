@@ -52,14 +52,37 @@ func (this *joinLinkStore) removeChatLinks(chatUID shared.UID) {
 	}
 }
 
+func (this *joinLinkStore) lookup(token string) (JoinLink, bool) {
+	link, ok := this.links[token]
+	if !ok {
+		return JoinLink{}, false
+	}
+	if this.isExpired(link) {
+		delete(this.links, token)
+		return JoinLink{}, false
+	}
+	return link, true
+}
+
+func (this *joinLinkStore) consume(token string) {
+	link, ok := this.links[token]
+	if !ok || link.RemainingUses == 0 {
+		return
+	}
+	link.RemainingUses--
+	if link.RemainingUses == 0 {
+		delete(this.links, token)
+		return
+	}
+	this.links[token] = link
+}
+
 // CreateJoinLink creates a new invite for chatUID and returns it.
 //
 // lifetimeSeconds controls how long the link stays valid: 0 means it lives until
 // the server stops. maxUses caps how many users can join with it: 0 means
 // unlimited.
 func (this *ChatsService) CreateJoinLink(chatUID shared.UID, lifetimeSeconds int64, maxUses uint) JoinLink {
-	this.joinLinks.removeExpired()
-
 	link := JoinLink{
 		Token:         createJoinLinkToken(),
 		ChatUID:       chatUID,
@@ -69,36 +92,13 @@ func (this *ChatsService) CreateJoinLink(chatUID shared.UID, lifetimeSeconds int
 		link.ExpiresAt = shared.Time(time.Now().UnixMilli()) + shared.Time(lifetimeSeconds)*1000
 	}
 
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	this.joinLinks.removeExpired()
 	this.joinLinks.links[link.Token] = link
+
 	return link
-}
-
-func (this *ChatsService) lookupJoinLink(token string) (JoinLink, bool) {
-	link, ok := this.joinLinks.links[token]
-	if !ok {
-		return JoinLink{}, false
-	}
-	if this.joinLinks.isExpired(link) {
-		delete(this.joinLinks.links, token)
-		return JoinLink{}, false
-	}
-	return link, true
-}
-
-// consumeJoinLinkUse spends one use of the link behind token. Unlimited links
-// (RemainingUses == 0) are left untouched; a link whose last use is spent is
-// removed.
-func (this *ChatsService) consumeJoinLinkUse(token string) {
-	link, ok := this.joinLinks.links[token]
-	if !ok || link.RemainingUses == 0 {
-		return
-	}
-	link.RemainingUses--
-	if link.RemainingUses == 0 {
-		delete(this.joinLinks.links, token)
-		return
-	}
-	this.joinLinks.links[token] = link
 }
 
 // JoinChatByLink uses the join link behind token to add userUID to its chat and
@@ -109,7 +109,10 @@ func (this *ChatsService) consumeJoinLinkUse(token string) {
 // not burn a use), and the link is removed once its last use is spent. It
 // returns InvalidJoinLinkError when the token is unknown or expired.
 func (this *ChatsService) JoinChatByLink(ctx context.Context, token string, userUID shared.UID) (shared.UID, error) {
-	link, ok := this.lookupJoinLink(token)
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	link, ok := this.joinLinks.lookup(token)
 	if !ok {
 		return 0, InvalidJoinLinkError
 	}
@@ -120,8 +123,9 @@ func (this *ChatsService) JoinChatByLink(ctx context.Context, token string, user
 	}
 
 	if joined {
-		this.consumeJoinLinkUse(token)
+		this.joinLinks.consume(token)
 	}
 
 	return link.ChatUID, nil
 }
+

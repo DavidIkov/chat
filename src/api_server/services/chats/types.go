@@ -3,6 +3,7 @@ package chats
 import (
 	"chat/src/shared"
 	"database/sql"
+	"sync"
 )
 
 type Chat struct {
@@ -26,5 +27,6 @@ type Member struct {
 
 type ChatsService struct {
 	db        *sql.DB
+	mutex     sync.RWMutex
 	joinLinks *joinLinkStore
 }

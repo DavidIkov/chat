@@ -163,6 +163,9 @@ func (this *ChatsService) GetChatMembers(ctx context.Context, chatUID shared.UID
 // link pointing at it is purged so that a stale link cannot rejoin a deleted
 // chat.
 func (this *ChatsService) LeaveChat(ctx context.Context, chatUID shared.UID, userUID shared.UID) error {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
 	tx, err := this.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
