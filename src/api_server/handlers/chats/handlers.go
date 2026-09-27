@@ -6,7 +6,7 @@ import (
 	chatservice "chat/src/api_server/services/chats"
 	"chat/src/shared"
 	"chat/src/shared_api"
-	"chat/src/shared_api/chat"
+	chatapi "chat/src/shared_api/chat"
 	"context"
 	"errors"
 	"net/http"
@@ -40,7 +40,7 @@ func (this *ChatsHandler) ensureChatMember(ctx context.Context, userUID shared.U
 }
 
 func (this *ChatsHandler) CreateChatHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.CreateChatRequest
+	var request chatapi.CreateChatRequest
 	if !middleware.DecodeJSON(w, r, &request) {
 		return
 	}
@@ -49,17 +49,17 @@ func (this *ChatsHandler) CreateChatHandler(w http.ResponseWriter, r *http.Reque
 
 	createdChat, err := this.Services.Chats.CreateChat(r.Context(), request.Name, session.UID)
 	if err != nil {
-		middleware.WriteJSON(w, http.StatusInternalServerError, chat.CreateChatResponse{
+		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.CreateChatResponse{
 			Error: &shared_api.Error{Message: err.Error()},
 		})
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusOK, chat.CreateChatResponse{ChatUID: createdChat.ChatUID})
+	middleware.WriteJSON(w, http.StatusOK, chatapi.CreateChatResponse{ChatUID: createdChat.ChatUID})
 }
 
 func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.SendMessageRequest
+	var request chatapi.SendMessageRequest
 	if !middleware.DecodeJSON(w, r, &request) {
 		return
 	}
@@ -67,7 +67,7 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 	session, _ := auth.SessionFromContext(r.Context())
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chat.SendMessageResponse{
+		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.SendMessageResponse{
 			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
@@ -75,17 +75,17 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 
 	message, err := this.Services.Chats.SendMessage(r.Context(), request.ChatUID, session.UID, request.Text)
 	if err != nil {
-		middleware.WriteJSON(w, http.StatusInternalServerError, chat.SendMessageResponse{
+		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.SendMessageResponse{
 			Error: &shared_api.Error{Message: err.Error()},
 		})
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusOK, chat.SendMessageResponse{MessageUID: message.MessageUID})
+	middleware.WriteJSON(w, http.StatusOK, chatapi.SendMessageResponse{MessageUID: message.MessageUID})
 }
 
 func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.GetChatsRequest
+	var request chatapi.GetChatsRequest
 	if !middleware.DecodeQuery(w, r, &request) {
 		return
 	}
@@ -95,16 +95,16 @@ func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request
 	// GetChats only returns chats the acting user is a member of.
 	chats, err := this.Services.Chats.GetChats(r.Context(), session.UID, request.UIDs)
 	if err != nil {
-		middleware.WriteJSON(w, http.StatusInternalServerError, chat.GetChatsResponse{
+		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.GetChatsResponse{
 			Error: &shared_api.Error{Message: err.Error()},
 		})
 		return
 	}
 
-	response := chat.GetChatsResponse{Chats: make([]chat.Chat, 0, len(chats))}
+	response := chatapi.GetChatsResponse{Chats: make([]chatapi.Chat, 0, len(chats))}
 	for i := range chats {
 		foundChat := &chats[i]
-		response.Chats = append(response.Chats, chat.Chat{
+		response.Chats = append(response.Chats, chatapi.Chat{
 			ChatUID:        foundChat.ChatUID,
 			CreatorUserUID: foundChat.CreatorUserUID,
 			CreatedAt:      foundChat.CreatedAt,
@@ -116,7 +116,7 @@ func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.GetChatMessagesRequest
+	var request chatapi.GetChatMessagesRequest
 	if !middleware.DecodeQuery(w, r, &request) {
 		return
 	}
@@ -124,7 +124,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 	session, _ := auth.SessionFromContext(r.Context())
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chat.GetChatMessagesResponse{
+		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.GetChatMessagesResponse{
 			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
@@ -137,16 +137,16 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 
 	messages, err := this.Services.Chats.GetMessages(r.Context(), request.ChatUID, limit, request.BeforeMessageUID, request.AfterMessageUID)
 	if err != nil {
-		middleware.WriteJSON(w, http.StatusInternalServerError, chat.GetChatMessagesResponse{
+		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.GetChatMessagesResponse{
 			Error: &shared_api.Error{Message: err.Error()},
 		})
 		return
 	}
 
-	response := chat.GetChatMessagesResponse{Messages: make([]chat.Message, 0, len(messages))}
+	response := chatapi.GetChatMessagesResponse{Messages: make([]chatapi.Message, 0, len(messages))}
 	for i := range messages {
 		foundMessage := &messages[i]
-		response.Messages = append(response.Messages, chat.Message{
+		response.Messages = append(response.Messages, chatapi.Message{
 			UserUID:    foundMessage.UserUID,
 			ChatUID:    foundMessage.ChatUID,
 			MessageUID: foundMessage.MessageUID,
@@ -159,7 +159,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 }
 
 func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.CreateJoinLinkRequest
+	var request chatapi.CreateJoinLinkRequest
 	if !middleware.DecodeJSON(w, r, &request) {
 		return
 	}
@@ -167,7 +167,7 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 	session, _ := auth.SessionFromContext(r.Context())
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chat.CreateJoinLinkResponse{
+		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.CreateJoinLinkResponse{
 			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
@@ -175,14 +175,14 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 
 	link := this.Services.Chats.CreateJoinLink(request.ChatUID, request.LifetimeSeconds, request.MaxUses)
 
-	middleware.WriteJSON(w, http.StatusOK, chat.CreateJoinLinkResponse{
+	middleware.WriteJSON(w, http.StatusOK, chatapi.CreateJoinLinkResponse{
 		Token:     link.Token,
 		ExpiresAt: link.ExpiresAt,
 	})
 }
 
 func (this *ChatsHandler) JoinChatHandler(w http.ResponseWriter, r *http.Request) {
-	var request chat.JoinChatRequest
+	var request chatapi.JoinChatRequest
 	if !middleware.DecodeJSON(w, r, &request) {
 		return
 	}
@@ -191,12 +191,11 @@ func (this *ChatsHandler) JoinChatHandler(w http.ResponseWriter, r *http.Request
 
 	chatUID, err := this.Services.Chats.JoinChatByLink(r.Context(), request.Token, session.UID)
 	if err != nil {
-		middleware.WriteJSON(w, chatsErrorStatus(err), chat.JoinChatResponse{
+		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.JoinChatResponse{
 			Error: &shared_api.Error{Field: "join_token", Message: err.Error()},
 		})
 		return
 	}
 
-	middleware.WriteJSON(w, http.StatusOK, chat.JoinChatResponse{ChatUID: chatUID})
+	middleware.WriteJSON(w, http.StatusOK, chatapi.JoinChatResponse{ChatUID: chatUID})
 }
-
