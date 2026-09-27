@@ -1,4 +1,4 @@
-package shared_api
+package api
 
 type Error struct {
 	Field    string `json:"field,omitempty"`

@@ -1,7 +1,7 @@
 package user
 
 import (
-	"chat/src/shared_api"
+	"chat/src/shared/api"
 )
 
 type UserLogInRequest struct {
@@ -10,8 +10,8 @@ type UserLogInRequest struct {
 }
 
 type UserLogInResponse struct {
-	Error       *shared_api.Error `json:"error,omitempty"`
-	UserSession *UserSession      `json:"user_session,omitempty"`
+	Error       *api.Error   `json:"error,omitempty"`
+	UserSession *UserSession `json:"user_session,omitempty"`
 }
 
 // UserLogOutRequest is intentionally empty: the session token is read from the
@@ -19,7 +19,7 @@ type UserLogInResponse struct {
 type UserLogOutRequest struct{}
 
 type UserLogOutResponse struct {
-	Error *shared_api.Error `json:"error,omitempty"`
+	Error *api.Error `json:"error,omitempty"`
 }
 
 type UserRegistrationRequest struct {
@@ -28,6 +28,6 @@ type UserRegistrationRequest struct {
 }
 
 type UserRegistrationResponse struct {
-	Error       *shared_api.Error `json:"error,omitempty"`
-	UserSession *UserSession      `json:"user_session,omitempty"`
+	Error       *api.Error   `json:"error,omitempty"`
+	UserSession *UserSession `json:"user_session,omitempty"`
 }

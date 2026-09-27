@@ -5,8 +5,8 @@ import (
 	"chat/src/api_server/handlers/middleware"
 	chatservice "chat/src/api_server/services/chats"
 	"chat/src/shared"
-	"chat/src/shared_api"
-	chatapi "chat/src/shared_api/chat"
+	"chat/src/shared/api"
+	chatapi "chat/src/shared/api/chat"
 	"context"
 	"errors"
 	"net/http"
@@ -50,7 +50,7 @@ func (this *ChatsHandler) CreateChatHandler(w http.ResponseWriter, r *http.Reque
 	createdChat, err := this.Services.Chats.CreateChat(r.Context(), request.Name, session.UID)
 	if err != nil {
 		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.CreateChatResponse{
-			Error: &shared_api.Error{Message: err.Error()},
+			Error: &api.Error{Message: err.Error()},
 		})
 		return
 	}
@@ -68,7 +68,7 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
 		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.SendMessageResponse{
-			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
+			Error: &api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
 	}
@@ -76,7 +76,7 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 	message, err := this.Services.Chats.SendMessage(r.Context(), request.ChatUID, session.UID, request.Text)
 	if err != nil {
 		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.SendMessageResponse{
-			Error: &shared_api.Error{Message: err.Error()},
+			Error: &api.Error{Message: err.Error()},
 		})
 		return
 	}
@@ -96,7 +96,7 @@ func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request
 	chats, err := this.Services.Chats.GetChats(r.Context(), session.UID, request.UIDs)
 	if err != nil {
 		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.GetChatsResponse{
-			Error: &shared_api.Error{Message: err.Error()},
+			Error: &api.Error{Message: err.Error()},
 		})
 		return
 	}
@@ -125,7 +125,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
 		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.GetChatMessagesResponse{
-			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
+			Error: &api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
 	}
@@ -138,7 +138,7 @@ func (this *ChatsHandler) GetChatMessagesHandler(w http.ResponseWriter, r *http.
 	messages, err := this.Services.Chats.GetMessages(r.Context(), request.ChatUID, limit, request.BeforeMessageUID, request.AfterMessageUID)
 	if err != nil {
 		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.GetChatMessagesResponse{
-			Error: &shared_api.Error{Message: err.Error()},
+			Error: &api.Error{Message: err.Error()},
 		})
 		return
 	}
@@ -168,7 +168,7 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 
 	if err := this.ensureChatMember(r.Context(), session.UID, request.ChatUID); err != nil {
 		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.CreateJoinLinkResponse{
-			Error: &shared_api.Error{Field: "chat_uid", Message: err.Error()},
+			Error: &api.Error{Field: "chat_uid", Message: err.Error()},
 		})
 		return
 	}
@@ -192,7 +192,7 @@ func (this *ChatsHandler) JoinChatHandler(w http.ResponseWriter, r *http.Request
 	chatUID, err := this.Services.Chats.JoinChatByLink(r.Context(), request.Token, session.UID)
 	if err != nil {
 		middleware.WriteJSON(w, chatsErrorStatus(err), chatapi.JoinChatResponse{
-			Error: &shared_api.Error{Field: "join_token", Message: err.Error()},
+			Error: &api.Error{Field: "join_token", Message: err.Error()},
 		})
 		return
 	}

@@ -2,7 +2,7 @@ package auth
 
 import (
 	userservice "chat/src/api_server/services/users"
-	"chat/src/shared_api"
+	"chat/src/shared/api"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -59,6 +59,6 @@ func writeAuthError(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
 	json.NewEncoder(w).Encode(struct {
-		Error *shared_api.Error `json:"error,omitempty"`
-	}{Error: &shared_api.Error{Field: "token", Message: err.Error()}})
+		Error *api.Error `json:"error,omitempty"`
+	}{Error: &api.Error{Field: "token", Message: err.Error()}})
 }

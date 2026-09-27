@@ -2,7 +2,7 @@ package chat
 
 import (
 	"chat/src/shared"
-	"chat/src/shared_api"
+	"chat/src/shared/api"
 )
 
 type GetChatsRequest struct {
@@ -10,8 +10,8 @@ type GetChatsRequest struct {
 }
 
 type GetChatsResponse struct {
-	Error *shared_api.Error `json:"error,omitempty"`
-	Chats []Chat            `json:"chats,omitempty"`
+	Error *api.Error `json:"error,omitempty"`
+	Chats []Chat     `json:"chats,omitempty"`
 }
 
 /*
@@ -28,6 +28,6 @@ type GetChatMessagesRequest struct {
 }
 
 type GetChatMessagesResponse struct {
-	Error    *shared_api.Error `json:"error,omitempty"`
-	Messages []Message         `json:"messages,omitempty"`
+	Error    *api.Error `json:"error,omitempty"`
+	Messages []Message  `json:"messages,omitempty"`
 }

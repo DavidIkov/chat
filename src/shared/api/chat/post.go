@@ -2,7 +2,7 @@ package chat
 
 import (
 	"chat/src/shared"
-	"chat/src/shared_api"
+	"chat/src/shared/api"
 )
 
 type CreateChatRequest struct {
@@ -10,8 +10,8 @@ type CreateChatRequest struct {
 }
 
 type CreateChatResponse struct {
-	Error   *shared_api.Error `json:"error,omitempty"`
-	ChatUID shared.UID        `json:"chat_uid,omitempty"`
+	Error   *api.Error `json:"error,omitempty"`
+	ChatUID shared.UID `json:"chat_uid,omitempty"`
 }
 
 type SendMessageRequest struct {
@@ -20,8 +20,8 @@ type SendMessageRequest struct {
 }
 
 type SendMessageResponse struct {
-	Error      *shared_api.Error `json:"error,omitempty"`
-	MessageUID shared.UID        `json:"message_uid,omitempty"`
+	Error      *api.Error `json:"error,omitempty"`
+	MessageUID shared.UID `json:"message_uid,omitempty"`
 }
 
 type CreateJoinLinkRequest struct {
@@ -33,8 +33,8 @@ type CreateJoinLinkRequest struct {
 }
 
 type CreateJoinLinkResponse struct {
-	Error *shared_api.Error `json:"error,omitempty"`
-	Token string            `json:"token,omitempty"`
+	Error *api.Error `json:"error,omitempty"`
+	Token string     `json:"token,omitempty"`
 	// ExpiresAt is 0 when the link never expires while the server runs.
 	ExpiresAt shared.Time `json:"expires_at,omitempty"`
 }
@@ -44,6 +44,6 @@ type JoinChatRequest struct {
 }
 
 type JoinChatResponse struct {
-	Error   *shared_api.Error `json:"error,omitempty"`
-	ChatUID shared.UID        `json:"chat_uid,omitempty"`
+	Error   *api.Error `json:"error,omitempty"`
+	ChatUID shared.UID `json:"chat_uid,omitempty"`
 }

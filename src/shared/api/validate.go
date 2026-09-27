@@ -1,4 +1,4 @@
-package shared_api
+package api
 
 import (
 	"errors"
