@@ -101,6 +101,25 @@ func (this *UsersService) LogOutUser(ctx context.Context, token string) error {
 	return TokenNotFoundError
 }
 
+func (this *UsersService) DeleteUser(ctx context.Context, uid uint) error {
+	this.mutex.Lock()
+	defer this.mutex.Unlock()
+
+	if _, err := this.db.ExecContext(ctx, "delete from users where uid = $1", uid); err != nil {
+		return err
+	}
+
+	for i := 0; i < len(this.sessions); {
+		if this.sessions[i].UID == uid {
+			this.sessions[i] = this.sessions[len(this.sessions)-1]
+			this.sessions = this.sessions[:len(this.sessions)-1]
+			continue
+		}
+		i++
+	}
+	return nil
+}
+
 func (this *UsersService) GetUsers(ctx context.Context, uids []uint) ([]User, error) {
 	rows, err := this.db.QueryContext(ctx, "select uid, name from users where uid = any($1)", pq.Array(uids))
 	if err != nil {

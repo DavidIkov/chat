@@ -44,7 +44,7 @@ func (this *ChatsService) SendMessage(ctx context.Context, chatUID shared.UID, u
 }
 
 func (this *ChatsService) GetChats(ctx context.Context, userUID shared.UID, uids []shared.UID) ([]Chat, error) {
-	chatsRows, err := this.db.QueryContext(ctx, "select c.uid, c.name, c.creator_user_uid, c.created_at from chats c join chat_members m on m.chat_uid = c.uid where m.user_uid = $1 and c.uid = any($2)", userUID, pq.Array(uids))
+	chatsRows, err := this.db.QueryContext(ctx, "select c.uid, c.name, coalesce(c.creator_user_uid, 0) as creator_user_uid, c.created_at from chats c join chat_members m on m.chat_uid = c.uid where m.user_uid = $1 and c.uid = any($2)", userUID, pq.Array(uids))
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (this *ChatsService) JoinChat(ctx context.Context, chatUID shared.UID, user
 // returned; if beforeMessageUID is not zero only messages with uid < it are
 // considered (backward pagination), otherwise the very last messages are used.
 func (this *ChatsService) GetMessages(ctx context.Context, chatUID shared.UID, limit uint, beforeMessageUID shared.UID, afterMessageUID shared.UID) ([]Message, error) {
-	const columns = "uid, user_uid, chat_uid, created_at, text"
+	const columns = "uid, coalesce(user_uid, 0) as user_uid, chat_uid, created_at, text"
 
 	var (
 		query string
@@ -199,4 +199,42 @@ func (this *ChatsService) LeaveChat(ctx context.Context, chatUID shared.UID, use
 	}
 
 	return nil
+}
+
+func (this *ChatsService) DeleteUserData(ctx context.Context, userUID shared.UID, deleteMessages bool) error {
+	chatUIDs, err := this.getUserChatUIDs(ctx, userUID)
+	if err != nil {
+		return err
+	}
+
+	if deleteMessages {
+		if _, err := this.db.ExecContext(ctx, "delete from messages where user_uid = $1", userUID); err != nil {
+			return err
+		}
+	}
+
+	for _, chatUID := range chatUIDs {
+		if err := this.LeaveChat(ctx, chatUID, userUID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (this *ChatsService) getUserChatUIDs(ctx context.Context, userUID shared.UID) ([]shared.UID, error) {
+	rows, err := this.db.QueryContext(ctx, "select chat_uid from chat_members where user_uid = $1", userUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	chatUIDs := make([]shared.UID, 0)
+	for rows.Next() {
+		var chatUID shared.UID
+		if err := rows.Scan(&chatUID); err != nil {
+			return nil, err
+		}
+		chatUIDs = append(chatUIDs, chatUID)
+	}
+	return chatUIDs, rows.Err()
 }

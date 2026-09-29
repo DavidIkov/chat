@@ -104,6 +104,31 @@ func (this *UsersHandler) UserLogOutHandler(w http.ResponseWriter, r *http.Reque
 	middleware.WriteJSON(w, http.StatusOK, userapi.UserLogOutResponse{})
 }
 
+func (this *UsersHandler) UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	var request userapi.UserDeleteRequest
+	if !middleware.DecodeJSON(w, r, &request) {
+		return
+	}
+
+	session, _ := auth.SessionFromContext(r.Context())
+
+	if err := this.Services.Chats.DeleteUserData(r.Context(), session.UID, request.DeleteMessages); err != nil {
+		middleware.WriteJSON(w, http.StatusInternalServerError, userapi.UserDeleteResponse{
+			Error: &api.Error{Message: err.Error()},
+		})
+		return
+	}
+
+	if err := this.Services.Users.DeleteUser(r.Context(), uint(session.UID)); err != nil {
+		middleware.WriteJSON(w, http.StatusInternalServerError, userapi.UserDeleteResponse{
+			Error: &api.Error{Message: err.Error()},
+		})
+		return
+	}
+
+	middleware.WriteJSON(w, http.StatusOK, userapi.UserDeleteResponse{})
+}
+
 func (this *UsersHandler) UsersGetHandler(w http.ResponseWriter, r *http.Request) {
 	var request userapi.UsersGetRequest
 	if !middleware.DecodeQuery(w, r, &request) {

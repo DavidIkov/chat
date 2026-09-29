@@ -14,7 +14,7 @@ func CreateChats(db *sql.DB) (*ChatsService, error) {
 create table if not exists chats (
     uid serial primary key,
     name text not null,
-    creator_user_uid integer not null references users(uid),
+    creator_user_uid integer references users(uid) on delete set null,
 	created_at BIGINT not null
 )`); err != nil {
 		return nil, err
@@ -23,7 +23,7 @@ create table if not exists chats (
 	if _, err := db.Exec(`
 create table if not exists messages (
     uid serial primary key,
-    user_uid integer not null references users(uid),
+    user_uid integer references users(uid) on delete set null,
     chat_uid integer not null references chats(uid),
 	created_at BIGINT not null,
 	text TEXT not null
