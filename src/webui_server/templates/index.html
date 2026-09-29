@@ -1,0 +1,33 @@
+{{template "head" .}}
+
+<h1>Servers</h1>
+
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+<form method="post" action="/servers">
+  <fieldset>
+    <legend>Add an api server</legend>
+    <label>URL <input type="url" name="url" placeholder="http://localhost:8080" required></label>
+    <label>Name <input type="text" name="name" placeholder="optional"></label>
+    <button type="submit">Add server</button>
+  </fieldset>
+</form>
+
+{{if .Servers}}
+<ul class="servers">
+  {{range .Servers}}
+  <li>
+    <a href="/servers/{{.ID}}">{{if .Name}}{{.Name}}{{else}}{{.URL}}{{end}}</a>
+    <small>{{.URL}}</small>
+    {{if .Session}}<span class="signed-in">signed in</span>{{end}}
+    <form method="post" action="/servers/{{.ID}}/remove" class="inline">
+      <button type="submit">Remove</button>
+    </form>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p>No servers yet. Add one above.</p>
+{{end}}
+
+{{template "foot" .}}

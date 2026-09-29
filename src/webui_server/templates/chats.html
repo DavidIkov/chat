@@ -1,0 +1,34 @@
+{{template "head" .}}
+
+<h1>Chats — {{if .Server.Name}}{{.Server.Name}}{{else}}{{.Server.URL}}{{end}}</h1>
+<p><a href="/servers/{{.Server.ID}}">&larr; Server</a></p>
+
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+<form method="post" action="/servers/{{.Server.ID}}/chats">
+  <fieldset>
+    <legend>Create chat</legend>
+    <label>Name <input type="text" name="name" required></label>
+    <button type="submit">Create</button>
+  </fieldset>
+</form>
+
+<form method="post" action="/servers/{{.Server.ID}}/chats/join">
+  <fieldset>
+    <legend>Join chat</legend>
+    <label>Token <input type="text" name="token" required></label>
+    <button type="submit">Join</button>
+  </fieldset>
+</form>
+
+{{if .Chats}}
+<ul class="chats">
+  {{range .Chats}}
+  <li><a href="/servers/{{$.Server.ID}}/chats/{{.ChatUID}}">{{.Name}}</a></li>
+  {{end}}
+</ul>
+{{else}}
+<p>No chats yet.</p>
+{{end}}
+
+{{template "foot" .}}

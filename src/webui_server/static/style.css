@@ -1,0 +1,42 @@
+/* Minimal stylesheet for the WebUI. Keep it small and dependency-free. */
+:root { color-scheme: light dark; }
+
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+  line-height: 1.4;
+}
+
+header { border-bottom: 1px solid #8884; margin-bottom: 1rem; padding-bottom: .5rem; }
+header a { font-weight: 600; text-decoration: none; }
+footer { border-top: 1px solid #8884; margin-top: 2rem; padding-top: .5rem; color: #888; }
+
+h1, h2 { line-height: 1.2; }
+h2 { margin-top: 1.5rem; }
+
+a { color: inherit; }
+
+form fieldset { margin-bottom: 1rem; border: 1px solid #8884; }
+form label { display: block; margin: .25rem 0; }
+form button { margin-top: .5rem; }
+form.inline { display: inline; }
+form.inline button { margin: 0; }
+
+ul { padding-left: 1.25rem; }
+
+ul.messages { list-style: none; padding-left: 0; }
+ul.messages li { margin: .25rem 0; }
+.messages .author { font-weight: 600; margin-right: .5rem; }
+.messages .text { overflow-wrap: anywhere; }
+
+ul.servers li, ul.chats li, ul.members li { margin: .25rem 0; }
+ul.servers small { color: #888; margin-left: .5rem; }
+
+code { background: #8882; padding: .1rem .3rem; border-radius: .2rem; }
+
+.signed-in { color: green; margin-left: .5rem; }
+.error { color: crimson; }
+
+.columns { display: flex; flex-wrap: wrap; gap: 1rem; }

@@ -1,0 +1,55 @@
+{{template "head" .}}
+
+<h1>{{.Chat.Name}}</h1>
+<p><a href="/servers/{{.Server.ID}}/chats">&larr; Chats</a></p>
+
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+{{if .JoinLink}}
+<p class="join-link">Join link token: <code>{{.JoinLink}}</code></p>
+{{end}}
+
+<h2>Messages</h2>
+{{if .Messages}}
+<ul class="messages">
+  {{range .Messages}}
+  <li>
+    <span class="author">{{if .UserName}}{{.UserName}}{{else}}uid {{.Message.UserUID}}{{end}}</span>
+    <span class="text">{{.Message.Text}}</span>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p>No messages yet.</p>
+{{end}}
+
+<form method="post" action="/servers/{{.Server.ID}}/chats/{{.Chat.ChatUID}}/messages">
+  <fieldset>
+    <legend>Send a message</legend>
+    <label>Message <input type="text" name="text" maxlength="256" required></label>
+    <button type="submit">Send</button>
+  </fieldset>
+</form>
+
+<h2>Members</h2>
+<ul class="members">
+  {{range .Members}}
+  <li>{{if .Name}}{{.Name}}{{else}}uid {{.UID}}{{end}}</li>
+  {{end}}
+</ul>
+
+<h2>Share</h2>
+<form method="post" action="/servers/{{.Server.ID}}/chats/{{.Chat.ChatUID}}/join_link">
+  <fieldset>
+    <legend>Create join link</legend>
+    <label>Lifetime seconds <input type="number" name="lifetime_seconds" value="0" min="0"></label>
+    <label>Max uses <input type="number" name="max_uses" value="0" min="0"></label>
+    <button type="submit">Create join link</button>
+  </fieldset>
+</form>
+
+<form method="post" action="/servers/{{.Server.ID}}/chats/{{.Chat.ChatUID}}/leave">
+  <button type="submit">Leave chat</button>
+</form>
+
+{{template "foot" .}}

@@ -6,7 +6,9 @@ import (
 )
 
 type GetChatsRequest struct {
-	UIDs []shared.UID `form:"uids"`
+	// UIDs limits the result to these chats. Optional: when no uids are given the
+	// server returns every chat the caller is a member of (see GetUserChats).
+	UIDs []shared.UID `form:"uids,omitempty"`
 }
 
 type GetChatsResponse struct {

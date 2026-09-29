@@ -1,0 +1,36 @@
+{{template "head" .}}
+
+<h1>{{if .Server.Name}}{{.Server.Name}}{{else}}{{.Server.URL}}{{end}}</h1>
+<p><a href="/">&larr; All servers</a></p>
+
+{{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+{{if .SignedIn}}
+  <p>Signed in as uid {{.Server.Session.UID}}.</p>
+  <p><a href="/servers/{{.Server.ID}}/chats">Open chats</a></p>
+  <form method="post" action="/servers/{{.Server.ID}}/logout">
+    <button type="submit">Log out</button>
+  </form>
+{{else}}
+  <div class="columns">
+    <form method="post" action="/servers/{{.Server.ID}}/login">
+      <fieldset>
+        <legend>Log in</legend>
+        <label>Name <input type="text" name="name" required></label>
+        <label>Password <input type="password" name="password" required></label>
+        <button type="submit">Log in</button>
+      </fieldset>
+    </form>
+
+    <form method="post" action="/servers/{{.Server.ID}}/register">
+      <fieldset>
+        <legend>Register</legend>
+        <label>Name <input type="text" name="name" required></label>
+        <label>Password <input type="password" name="password" required></label>
+        <button type="submit">Register</button>
+      </fieldset>
+    </form>
+  </div>
+{{end}}
+
+{{template "foot" .}}

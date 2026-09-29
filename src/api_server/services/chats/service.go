@@ -61,6 +61,30 @@ func (this *ChatsService) GetChats(ctx context.Context, userUID shared.UID, uids
 	return chats, chatsRows.Err()
 }
 
+// GetUserChats returns every chat userUID is a member of, ordered by uid.
+func (this *ChatsService) GetUserChats(ctx context.Context, userUID shared.UID) ([]Chat, error) {
+	rows, err := this.db.QueryContext(ctx, `
+select c.uid, c.name, coalesce(c.creator_user_uid, 0) as creator_user_uid, c.created_at
+from chats c
+join chat_members m on m.chat_uid = c.uid
+where m.user_uid = $1
+order by c.uid`, userUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	chats := make([]Chat, 0)
+	for rows.Next() {
+		var chat Chat
+		if err := rows.Scan(&chat.ChatUID, &chat.Name, &chat.CreatorUserUID, &chat.CreatedAt); err != nil {
+			return nil, err
+		}
+		chats = append(chats, chat)
+	}
+	return chats, rows.Err()
+}
+
 func (this *ChatsService) IsChatMember(ctx context.Context, chatUID shared.UID, userUID shared.UID) (bool, error) {
 	var isMember bool
 	err := this.db.QueryRowContext(ctx, "select exists (select 1 from chat_members where chat_uid = $1 and user_uid = $2)", chatUID, userUID).Scan(&isMember)

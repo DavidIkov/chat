@@ -4,6 +4,7 @@ import (
 	"chat/src/api_server/handlers/auth"
 	chatsmiddleware "chat/src/api_server/handlers/chats/middleware"
 	"chat/src/api_server/handlers/middleware"
+	chatservice "chat/src/api_server/services/chats"
 	"chat/src/shared/api"
 	chatapi "chat/src/shared/api/chat"
 	"chat/src/shared/api/validator"
@@ -73,7 +74,14 @@ func (this *ChatsHandler) GetChatsHandler(w http.ResponseWriter, r *http.Request
 
 	session, _ := auth.SessionFromContext(r.Context())
 
-	chats, err := this.Services.Chats.GetChats(r.Context(), session.UID, request.UIDs)
+	// No uids provided: the caller wants every chat it belongs to.
+	var chats []chatservice.Chat
+	var err error
+	if len(request.UIDs) == 0 {
+		chats, err = this.Services.Chats.GetUserChats(r.Context(), session.UID)
+	} else {
+		chats, err = this.Services.Chats.GetChats(r.Context(), session.UID, request.UIDs)
+	}
 	if err != nil {
 		middleware.WriteJSON(w, http.StatusInternalServerError, chatapi.GetChatsResponse{
 			Error: &api.Error{Message: err.Error()},
