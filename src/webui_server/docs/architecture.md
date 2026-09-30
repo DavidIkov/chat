@@ -77,9 +77,12 @@ page needs a session to hold its server list. The api_server call is made with
 ### Post/Redirect/Get
 
 Every route that mutates state (add/remove server, login, register, logout,
-create chat, join chat, send message, create join link, leave chat) answers with
-`303 See Other` on success and lets the browser re-issue a `GET`. This is why the
-product works with **zero JavaScript**: reloading is always safe.
+delete account, create chat, join chat, send message, create join link, leave
+chat) answers with `303 See Other` on success and lets the browser re-issue a
+`GET`. This is why the product works with **zero JavaScript**: reloading is
+always safe. A freshly created join token is stashed on the WebUI session for one
+render (see `SetPendingJoinLink`) so the join-link POST can redirect like every
+other write instead of rendering its own result.
 
 ---
 
@@ -259,6 +262,7 @@ of each handler package. `{server_id}` = `routes.ServerIDPathKey`,
 | POST | `/servers/{server_id}/login` | `LogInHandler` | 303 → `/servers/{server_id}` |
 | POST | `/servers/{server_id}/register` | `RegisterHandler` | 303 → `/servers/{server_id}` |
 | POST | `/servers/{server_id}/logout` | `LogOutHandler` | 303 → `/servers/{server_id}` |
+| POST | `/servers/{server_id}/delete` | `DeleteUserHandler` | 303 → `/servers/{server_id}?deleted=1` |
 
 ### `handlers/chats`
 
@@ -269,7 +273,7 @@ of each handler package. `{server_id}` = `routes.ServerIDPathKey`,
 | POST | `/servers/{server_id}/chats/join` | `JoinChatHandler` | 303 → chat page |
 | GET | `/servers/{server_id}/chats/{chat_uid}` | `ChatPageHandler` | render `chat.html` |
 | POST | `/servers/{server_id}/chats/{chat_uid}/messages` | `SendMessageHandler` | 303 → chat page |
-| POST | `/servers/{server_id}/chats/{chat_uid}/join_link` | `CreateJoinLinkHandler` | render chat page w/ token |
+| POST | `/servers/{server_id}/chats/{chat_uid}/join_link` | `CreateJoinLinkHandler` | 303 → chat page, token shown once on the next render |
 | POST | `/servers/{server_id}/chats/{chat_uid}/leave` | `LeaveChatHandler` | 303 → chats page |
 
 ### Static
@@ -285,15 +289,19 @@ of each handler package. `{server_id}` = `routes.ServerIDPathKey`,
 | Add server | `POST /servers` | `url`, `name` (optional) |
 | Login | `POST /servers/{server_id}/login` | `name`, `password` |
 | Register | `POST /servers/{server_id}/register` | `name`, `password` |
+| Delete account | `POST /servers/{server_id}/delete` | `delete_messages` (checkbox, optional) |
 | Create chat | `POST /servers/{server_id}/chats` | `name` |
 | Join chat | `POST /servers/{server_id}/chats/join` | `token` |
 | Send message | `.../{chat_uid}/messages` | `text` |
-| Join link | `.../{chat_uid}/join_link` | `lifetime_seconds`, `max_uses` |
+| Join link | `.../{chat_uid}/join_link` | `limit_lifetime` (checkbox), `lifetime_seconds`, `limit_max_uses` (checkbox), `max_uses` — a limit applies only when its checkbox is checked |
 
 **Redirect targets.** `CreateChatHandler` and `JoinChatHandler` redirect to the
-chat page for the uid returned by the api_server. `SendMessageHandler` redirects
-back to the same chat page. `LogInHandler`/`RegisterHandler` redirect back to the
-server page.
+chat page for the uid returned by the api_server. `SendMessageHandler` and
+`CreateJoinLinkHandler` redirect back to the same chat page.
+`LogInHandler`/`RegisterHandler` redirect back to the server page.
+`DeleteUserHandler` redirects to the server page with `?deleted=1` (and clears the
+connection's session), so the confirmation is a banner on a `GET` rather than a
+re-submittable POST.
 
 ### Handler responsibilities (uniform shape)
 
@@ -322,7 +330,7 @@ All bodies are JSON. Errors come back as `{"error":{"field":"...","message":"...
 | `POST /user/register` | `{name, password}` | `{user_session:{uid,token}}` | FR-4 |
 | `POST /user/login` | `{name, password}` | `{user_session:{uid,token}}` | FR-4 |
 | `POST /user/logout` | — (Bearer) | `{}` | FR-5 |
-| `POST /user/delete` | `{delete_messages}` (Bearer) | `{}` | (out of scope) |
+| `POST /user/delete` | `{delete_messages}` (Bearer) | `{}` | FR-15 |
 | `GET /user/get` | `?uids=..` (Bearer) | `{users:[{uid,name}]}` | FR-9 |
 
 ### Chats
@@ -493,4 +501,4 @@ ready-to-paste prompts, lives in `src/webui_server/prompts/` (see its
 - CSRF tokens, WebUI-level auth, HTTPS termination, SSRF allow-list.
 - Rich message rendering (timestamps formatting, pagination via
   `before_message_uid`/`after_message_uid`).
-- Account deletion (`POST /user/delete`) and message management.
+- Message management (editing/deleting individual messages).

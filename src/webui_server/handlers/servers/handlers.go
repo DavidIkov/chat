@@ -28,8 +28,9 @@ func serverPath(id sessions.ServerID) string {
 }
 
 // renderServerPage renders server.html for one connection, using the name (or
-// URL) as the page title and showing message as a form error.
-func (this *ServersHandler) renderServerPage(w http.ResponseWriter, status int, connection *sessions.ServerConnection, message string) {
+// URL) as the page title, showing notice as a success banner and message as a
+// form error.
+func (this *ServersHandler) renderServerPage(w http.ResponseWriter, status int, connection *sessions.ServerConnection, notice string, message string) {
 	title := connection.Name
 	if title == "" {
 		title = connection.URL
@@ -38,6 +39,7 @@ func (this *ServersHandler) renderServerPage(w http.ResponseWriter, status int, 
 		Page:     render.Page{Title: title},
 		Server:   connection,
 		SignedIn: connection.Session != nil,
+		Notice:   notice,
 		Error:    message,
 	})
 }
@@ -89,7 +91,12 @@ func (this *ServersHandler) ServerPageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	this.renderServerPage(w, http.StatusOK, connection, "")
+	notice := ""
+	if r.URL.Query().Has("deleted") {
+		notice = "The account was deleted on this server."
+	}
+
+	this.renderServerPage(w, http.StatusOK, connection, notice, "")
 }
 
 // RemoveServerHandler drops a connection from the session and returns to the
@@ -125,7 +132,7 @@ func (this *ServersHandler) LogInHandler(w http.ResponseWriter, r *http.Request)
 	_ = r.ParseForm()
 	userSession, err := this.Services.API.LogIn(r.Context(), connection.URL, r.FormValue("name"), r.FormValue("password"))
 	if err != nil {
-		this.renderServerPage(w, http.StatusUnauthorized, connection, err.Error())
+		this.renderServerPage(w, http.StatusUnauthorized, connection, "", err.Error())
 		return
 	}
 
@@ -153,7 +160,7 @@ func (this *ServersHandler) RegisterHandler(w http.ResponseWriter, r *http.Reque
 	_ = r.ParseForm()
 	userSession, err := this.Services.API.Register(r.Context(), connection.URL, r.FormValue("name"), r.FormValue("password"))
 	if err != nil {
-		this.renderServerPage(w, http.StatusUnprocessableEntity, connection, err.Error())
+		this.renderServerPage(w, http.StatusUnprocessableEntity, connection, "", err.Error())
 		return
 	}
 
@@ -184,4 +191,39 @@ func (this *ServersHandler) LogOutHandler(w http.ResponseWriter, r *http.Request
 	_ = session.ClearServerSession(connection.ID)
 
 	render.Redirect(w, r, serverPath(connection.ID))
+}
+
+// DeleteUserHandler permanently deletes the signed-in account on one connection.
+// The "delete_messages" checkbox decides whether the account's messages are also
+// removed from every chat. Because the account and its tokens no longer exist
+// afterwards, the local session is cleared and the connection returns to the
+// signed-out state.
+//
+// Route: POST /servers/{server_id}/delete
+func (this *ServersHandler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := middleware.SessionFromContext(r.Context())
+
+	connection, ok := this.serverFromRequest(r, session)
+	if !ok {
+		this.Templates.RenderError(w, http.StatusNotFound, "server not found")
+		return
+	}
+	if connection.Session == nil {
+		render.Redirect(w, r, serverPath(connection.ID))
+		return
+	}
+
+	_ = r.ParseForm()
+	deleteMessages := r.Form.Has("delete_messages")
+
+	if err := this.Services.API.DeleteUser(r.Context(), connection.URL, connection.Session.Token, deleteMessages); err != nil {
+		this.renderServerPage(w, http.StatusUnprocessableEntity, connection, "", err.Error())
+		return
+	}
+
+	// The account and its token are gone on the api_server, so forget the local
+	// session too rather than pretending to stay signed in.
+	_ = session.ClearServerSession(connection.ID)
+
+	render.Redirect(w, r, serverPath(connection.ID)+"?deleted=1")
 }

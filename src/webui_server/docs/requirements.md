@@ -122,8 +122,12 @@ the new message is visible.
 
 ### FR-11 — Create a join link
 From a chat the user can generate a join link/token, optionally with a lifetime
-and a maximum number of uses. The resulting token is displayed so it can be
-shared.
+and a maximum number of uses. Both limits are **opt-in**: a lifetime and a use
+cap are only applied when the user ticks the matching checkbox, so the form never
+asks the user to interpret a `0` default. The resulting token is displayed so it
+can be shared: the request redirects back to the chat page (Post/Redirect/Get)
+and the token is shown once there, so refreshing the page does not resubmit the
+form.
 - `POST /chat/{chat_uid}/create_join_link`
 
 ### FR-12 — Leave a chat
@@ -138,6 +142,13 @@ obvious that reloading is how you refresh (e.g. a short hint in the footer).
 Every server connection keeps its **own** api_server user session. Signing in or
 out of one connection must never affect another, even if two connections point at
 the same api_server.
+
+### FR-15 — Delete the account
+When signed in on a connection, the user can permanently delete that account. A
+checkbox controls whether the account's messages are also removed from every
+chat. Afterwards the connection is signed out (its stored token is invalid) and
+the page shows a confirmation.
+- `POST /user/delete`
 
 ---
 
@@ -210,7 +221,6 @@ acceptance checks below.
 - **Automated tests.**
 - Password storage/synchronisation inside the WebUI (it delegates to api_server).
 - Editing messages, deleting individual messages, avatars, read receipts, search.
-- Account deletion / message deletion UI (`/user/delete` is left for later).
 - Multi-user WebUI accounts (the WebUI has no accounts of its own).
 
 ---
@@ -230,7 +240,11 @@ A runnable demonstration is accepted when, with a local api_server running:
 6. A second, different api_server can be added and signed in as a different
    user; the two sessions remain independent.
 7. Removing a connection returns to `/` without it.
-8. With JavaScript disabled, all of the above works.
+8. A join link can be created with no limits, and with a lifetime and/or a use
+   cap enabled through its checkbox.
+9. Deleting the account (with and without "also delete my messages") signs the
+   connection out and shows a confirmation.
+10. With JavaScript disabled, all of the above works.
 
 ---
 

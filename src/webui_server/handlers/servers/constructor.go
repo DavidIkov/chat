@@ -24,6 +24,7 @@ func CreateServers(mux *http.ServeMux, services *services.Services, templates *r
 	mux.HandleFunc("POST /servers/"+server+"/login", requireSession(handler.LogInHandler))
 	mux.HandleFunc("POST /servers/"+server+"/register", requireSession(handler.RegisterHandler))
 	mux.HandleFunc("POST /servers/"+server+"/logout", requireSession(handler.LogOutHandler))
+	mux.HandleFunc("POST /servers/"+server+"/delete", requireSession(handler.DeleteUserHandler))
 
 	return &handler
 }

@@ -26,7 +26,9 @@ func CreateHandlers(mux *http.ServeMux, services *services.Services, templates *
 	serversHandler := servers.CreateServers(mux, services, templates)
 	chatsHandler := chats.CreateChats(mux, services, templates)
 
-	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+	// staticFS is rooted at the static directory, so strip the "/static/" URL
+	// prefix before the file server looks the request path up in it.
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(staticFS)))
 
 	return &Handlers{
 		Servers: serversHandler,

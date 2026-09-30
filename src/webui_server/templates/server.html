@@ -3,6 +3,7 @@
 <h1>{{if .Server.Name}}{{.Server.Name}}{{else}}{{.Server.URL}}{{end}}</h1>
 <p><a href="/">&larr; All servers</a></p>
 
+{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
 
 {{if .SignedIn}}
@@ -10,6 +11,19 @@
   <p><a href="/servers/{{.Server.ID}}/chats">Open chats</a></p>
   <form method="post" action="/servers/{{.Server.ID}}/logout">
     <button type="submit">Log out</button>
+  </form>
+
+  <h2>Delete account</h2>
+  <form method="post" action="/servers/{{.Server.ID}}/delete">
+    <fieldset>
+      <legend>Delete account</legend>
+      <p class="muted">This permanently deletes your account on this server and cannot be undone.</p>
+      <label class="toggle">
+        <input type="checkbox" name="delete_messages" value="1">
+        Also delete my messages from every chat
+      </label>
+      <button type="submit" class="danger">Delete account</button>
+    </fieldset>
   </form>
 {{else}}
   <div class="columns">

@@ -58,8 +58,8 @@ func (this *Client) LogOut(ctx context.Context, baseURL string, token string) er
 	return nil
 }
 
-// DeleteUser deletes the account behind the token. Maps to POST /user/delete.
-// Not used by the initial UI; kept for completeness.
+// DeleteUser deletes the account behind the token, optionally removing its
+// messages. Maps to POST /user/delete.
 func (this *Client) DeleteUser(ctx context.Context, baseURL string, token string, deleteMessages bool) error {
 	request := userapi.UserDeleteRequest{DeleteMessages: deleteMessages}
 	var response userapi.UserDeleteResponse

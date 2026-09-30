@@ -7,6 +7,7 @@ import (
 	neturl "net/url"
 	"strings"
 
+	"chat/src/shared"
 	"chat/src/shared/api/user"
 )
 
@@ -98,6 +99,28 @@ func (this *WebUISession) ListServers() []*ServerConnection {
 	servers := make([]*ServerConnection, len(this.Servers))
 	copy(servers, this.Servers)
 	return servers
+}
+
+// SetPendingJoinLink remembers a freshly created join token for one chat so the
+// next render of that chat page can show it once (see TakePendingJoinLink).
+func (this *WebUISession) SetPendingJoinLink(serverID ServerID, chatUID shared.UID, token string) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+	this.pendingJoinLink = &pendingJoinLink{serverID: serverID, chatUID: chatUID, token: token}
+}
+
+// TakePendingJoinLink returns and clears the pending join token for the given
+// chat, or "" when there is none. Tokens belonging to another connection or chat
+// are left untouched so that navigating elsewhere does not lose them.
+func (this *WebUISession) TakePendingJoinLink(serverID ServerID, chatUID shared.UID) string {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+	pending := this.pendingJoinLink
+	if pending == nil || pending.serverID != serverID || pending.chatUID != chatUID {
+		return ""
+	}
+	this.pendingJoinLink = nil
+	return pending.token
 }
 
 // SetServerSession stores the api_server user session returned by login/register

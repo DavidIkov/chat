@@ -25,5 +25,7 @@ type ServerPage struct {
 	render.Page
 	Server   *sessions.ServerConnection
 	SignedIn bool
-	Error    string
+	// Notice is an optional success message (e.g. after deleting the account).
+	Notice string
+	Error  string
 }

@@ -38,5 +38,23 @@ code { background: #8882; padding: .1rem .3rem; border-radius: .2rem; }
 
 .signed-in { color: green; margin-left: .5rem; }
 .error { color: crimson; }
+.notice { color: green; }
+.muted { color: #888; }
+
+/* Destructive actions (e.g. deleting the account). */
+button.danger { border-color: crimson; color: crimson; }
+
+/*
+ * Opt-in join-link limits. The dependent field is only relevant while its
+ * checkbox is ticked. Browsers without :has() simply show both fields, and the
+ * server ignores a field whose checkbox is clear, so the form keeps working.
+ */
+.join-option { margin: .5rem 0; }
+.join-option .toggle { display: block; }
+.join-option .dependent { display: block; margin-left: 1.5rem; }
+@supports selector(:has(*)) {
+  .join-option .dependent { display: none; }
+  .join-option:has(input[type="checkbox"]:checked) .dependent { display: block; }
+}
 
 .columns { display: flex; flex-wrap: wrap; gap: 1rem; }

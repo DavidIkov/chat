@@ -2,6 +2,7 @@ package chats
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"chat/src/shared"
@@ -210,8 +211,9 @@ func (this *ChatsHandler) chatsOrNil(r *http.Request, connection *sessions.Serve
 }
 
 // ChatPageHandler renders one chat: its messages and members, the send form, the
-// join-link form and the leave button. After a join-link POST the generated token
-// is shown here.
+// join-link form and the leave button. A join token minted by the preceding
+// join-link POST is shown here once (it is held in the session between the POST
+// and this GET).
 //
 // Route: GET /servers/{server_id}/chats/{chat_uid}
 func (this *ChatsHandler) ChatPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +234,11 @@ func (this *ChatsHandler) ChatPageHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	this.renderChatPage(w, r, http.StatusOK, connection, chatUID, "", "")
+	// Show a just-created join token once; consuming it here (on the GET that
+	// follows the join-link POST) is what makes reloading that page a safe GET.
+	joinLink := session.TakePendingJoinLink(connection.ID, chatUID)
+
+	this.renderChatPage(w, r, http.StatusOK, connection, chatUID, joinLink, "")
 }
 
 // SendMessageHandler posts the "text" form field to the chat and redirects back
@@ -266,8 +272,14 @@ func (this *ChatsHandler) SendMessageHandler(w http.ResponseWriter, r *http.Requ
 	render.Redirect(w, r, chatPagePath(connection, chatUID))
 }
 
-// CreateJoinLinkHandler creates a join token from the "lifetime_seconds" and
-// "max_uses" form fields and renders the chat page with the token shown.
+// CreateJoinLinkHandler creates a join token from the join-link form, stashes it
+// on the session and redirects to the chat page, where ChatPageHandler shows it
+// once. The redirect (Post/Redirect/Get) ensures reloading the page does not
+// resubmit the form and mint another token. The "limit_lifetime" and "limit_max_uses"
+// checkboxes opt into the "lifetime_seconds" and "max_uses" fields; when a box is
+// clear its field is ignored and 0 is sent, which the api_server reads as "no
+// limit". A ticked box with a missing or non-positive value is rejected so the
+// link is never accidentally unlimited.
 //
 // Route: POST /servers/{server_id}/chats/{chat_uid}/join_link
 func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.Request) {
@@ -289,17 +301,57 @@ func (this *ChatsHandler) CreateJoinLinkHandler(w http.ResponseWriter, r *http.R
 	}
 
 	_ = r.ParseForm()
-	lifetime, _ := strconv.ParseInt(r.FormValue("lifetime_seconds"), 10, 64)
-	maxUses, _ := strconv.ParseUint(r.FormValue("max_uses"), 10, 32)
-	result, err := this.Services.API.CreateJoinLink(r.Context(), connection.URL, connection.Session.Token, chatUID, lifetime, uint(maxUses))
+
+	lifetime, lifetimeError := parseJoinLinkLifetime(r.Form)
+	if lifetimeError != "" {
+		this.renderChatPage(w, r, http.StatusUnprocessableEntity, connection, chatUID, "", lifetimeError)
+		return
+	}
+
+	maxUses, maxUsesError := parseJoinLinkMaxUses(r.Form)
+	if maxUsesError != "" {
+		this.renderChatPage(w, r, http.StatusUnprocessableEntity, connection, chatUID, "", maxUsesError)
+		return
+	}
+
+	result, err := this.Services.API.CreateJoinLink(r.Context(), connection.URL, connection.Session.Token, chatUID, lifetime, maxUses)
 	if err != nil {
 		this.renderChatPage(w, r, http.StatusUnprocessableEntity, connection, chatUID, "", err.Error())
 		return
 	}
 
-	// Rendered directly (no redirect) so the token is visible; reloading the page
-	// re-submits this POST and mints another token, which is acceptable for v1.
-	this.renderChatPage(w, r, http.StatusOK, connection, chatUID, result.Token, "")
+	// Hand the token to the redirect target instead of rendering it here; see the
+	// handler comment for why.
+	session.SetPendingJoinLink(connection.ID, chatUID, result.Token)
+	render.Redirect(w, r, chatPagePath(connection, chatUID))
+}
+
+// parseJoinLinkLifetime reads the optional lifetime of the join-link form. The
+// "limit_lifetime" checkbox turns the "lifetime_seconds" field on; when it is
+// clear the field is ignored and 0 (never expires) is returned. A ticked box with
+// a missing or non-positive value is an error.
+func parseJoinLinkLifetime(form url.Values) (int64, string) {
+	if !form.Has("limit_lifetime") {
+		return 0, ""
+	}
+	lifetime, err := strconv.ParseInt(form.Get("lifetime_seconds"), 10, 64)
+	if err != nil || lifetime <= 0 {
+		return 0, "Lifetime must be a positive number of seconds."
+	}
+	return lifetime, ""
+}
+
+// parseJoinLinkMaxUses mirrors parseJoinLinkLifetime for the "limit_max_uses"
+// checkbox and the "max_uses" field; 0 (unlimited) is returned when it is clear.
+func parseJoinLinkMaxUses(form url.Values) (uint, string) {
+	if !form.Has("limit_max_uses") {
+		return 0, ""
+	}
+	maxUses, err := strconv.ParseUint(form.Get("max_uses"), 10, 32)
+	if err != nil || maxUses == 0 {
+		return 0, "Max uses must be a positive number."
+	}
+	return uint(maxUses), ""
 }
 
 // LeaveChatHandler removes the user from the chat and returns to the chat list.

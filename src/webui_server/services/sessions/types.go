@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"chat/src/shared"
 	"chat/src/shared/api/user"
 	"sync"
 )
@@ -27,14 +28,25 @@ type ServerConnection struct {
 	Session *user.UserSession
 }
 
+// pendingJoinLink is a one-shot join token minted for a chat and shown once on
+// the chat page after its redirect. Keeping it server-side lets the join-link
+// POST answer with a redirect (Post/Redirect/Get) instead of rendering directly,
+// so reloading the page no longer resubmits the form.
+type pendingJoinLink struct {
+	serverID ServerID
+	chatUID  shared.UID
+	token    string
+}
+
 // WebUISession is the server-side state for one browser. All access to Servers
 // must go through the methods in service.go so the lock is always held.
 type WebUISession struct {
 	ID SessionID
 
-	mu      sync.RWMutex
-	nextID  ServerID
-	Servers []*ServerConnection
+	mu              sync.RWMutex
+	nextID          ServerID
+	Servers         []*ServerConnection
+	pendingJoinLink *pendingJoinLink
 }
 
 // SessionsService is the in-memory store of WebUI sessions. It has no persistent
