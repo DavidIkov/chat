@@ -1,4 +1,4 @@
-# afona_chat — common developer tasks.
+# chat — common developer tasks.
 #
 # Layout:
 #   cmd/api_server      -> JSON HTTP API backend (Postgres)
@@ -44,11 +44,10 @@ run-webui:
 	$(GO) run ./cmd/webui_server -listenURL $(WEBUI_ADDR)
 
 ## dev: start the local Postgres (docker compose)
-dev:
+pgup:
 	cd dev && docker compose up
 
-## down: stop the local Postgres
-down:
+pgdown:
 	cd dev && docker compose down
 
 ## clean: remove cached build artifacts
