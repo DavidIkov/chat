@@ -192,17 +192,26 @@ Both servers accept an `fs.FS` for templates and static assets, so switching to
 | `make check` | `fmt-check` + `vet` + `build`. |
 | `make test` | Start the local Postgres and run the full test suite (unit + HTTP integration). |
 | `make test-short` | Run only the tests that do not need a database. |
+| `make test-gui` | Run the desktop GUI client's headless unit tests (no display needed). |
 | `make run-api` | Run the API server (needs Postgres). |
 | `make run-webui` | Run the WebUI server. |
+| `make run-gui` | Run the desktop GUI client (needs Python 3.10+, `python3-tk` and a display). |
 | `make pgup` | Start the local Postgres via Docker Compose (foreground). |
 | `make pgdown` | Stop the local Postgres container. |
 | `make clean` | Remove cached build artifacts. |
 
-The Makefile exposes `GO`, `API_ADDR`, `WEBUI_ADDR` and `DB_URL` as overridable
-variables, for example:
+The Makefile exposes `GO`, `PYTHON`, `API_ADDR`, `WEBUI_ADDR`, `DB_URL` and
+`GUI_CONFIG` as overridable variables, for example:
 
 ```sh
 make run-api API_ADDR=:9000 DB_URL="postgres://user:pass@host:5432/db?sslmode=disable"
+make run-gui GUI_CONFIG=~/.config/chat/gui_client.json
+```
+
+To run the desktop client without `make`, from `gui_client/`:
+
+```sh
+python3 -m chat_client
 ```
 
 ---

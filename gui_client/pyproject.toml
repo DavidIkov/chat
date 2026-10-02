@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chat-client"
+version = "0.1.0"
+description = "Native Tkinter desktop client for the Chat api_server"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# Standard library only: Tkinter for the UI, urllib for HTTP. No third-party
+# runtime dependencies, matching the dependency-free posture of the Go servers.
+dependencies = []
+
+[project.scripts]
+chat-gui = "chat_client.__main__:main"
+
+[tool.setuptools]
+# Explicit package list: `tests/` is intentionally omitted, so the unit tests
+# (task 11) are never part of the distributed package. No third-party deps.
+packages = [
+    "chat_client",
+    "chat_client.apiclient",
+    "chat_client.config",
+    "chat_client.controller",
+    "chat_client.models",
+    "chat_client.state",
+    "chat_client.tasks",
+    "chat_client.ui",
+    "chat_client.ui.views",
+    "chat_client.ui.widgets",
+]
