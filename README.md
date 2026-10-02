@@ -190,6 +190,8 @@ Both servers accept an `fs.FS` for templates and static assets, so switching to
 | `make fmt` | Format all Go source in place with `gofmt`. |
 | `make fmt-check` | Fail if any Go file is not `gofmt`-clean. |
 | `make check` | `fmt-check` + `vet` + `build`. |
+| `make test` | Start the local Postgres and run the full test suite (unit + HTTP integration). |
+| `make test-short` | Run only the tests that do not need a database. |
 | `make run-api` | Run the API server (needs Postgres). |
 | `make run-webui` | Run the WebUI server. |
 | `make pgup` | Start the local Postgres via Docker Compose (foreground). |
@@ -380,8 +382,31 @@ go build ./...    # compile everything
 go vet ./...      # static analysis
 ```
 
-There are **no automated tests** in this project by design. Verification is done
-with `go build`, `go vet`, `gofmt`, and manual smoke testing through the WebUI.
+There are automated tests under `internal/api_server/apitest`:
+
+- **HTTP integration tests** drive the real router (`handlers.NewServer`) with
+  actual HTTP requests against a real PostgreSQL database, so each test covers
+  the handler, service and SQL layers together (registration/login, chats,
+  messages and pagination, join links, membership rules, leaving and deleting).
+- **Service tests** call the service layer directly for business rules that are
+  awkward or slow over HTTP (join-link lifetime and use counting, cursor
+  pagination, the last-member cascade delete, session bookkeeping).
+
+`TestMain` connects to `TEST_DB_URL`, creates a uniquely named throwaway database
+and drops it when the run ends, so the tests never touch your `chatdb`. Run them
+with:
+
+```sh
+make test         # starts Postgres via Docker Compose, then runs everything
+make test-short   # only the tests that do not need a database
+```
+
+Override the maintenance connection (it must be a `postgres://` URL whose role
+may `CREATE DATABASE`) with `TEST_DB_URL`:
+
+```sh
+make test TEST_DB_URL="postgres://user:pass@host:5432/postgres?sslmode=disable"
+```
 
 The full task breakdown lives in [`docs/requirements.md`](docs/requirements.md)
 and [`docs/architecture.md`](docs/architecture.md).

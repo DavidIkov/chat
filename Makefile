@@ -8,10 +8,14 @@ GO         ?= go
 API_ADDR   ?= :8080
 WEBUI_ADDR ?= :8000
 DB_URL     ?= postgres://admin:admin@localhost:7337/chatdb?sslmode=disable
+# The integration tests create and drop their own throwaway database, so this
+# must point at a database the role may connect to for maintenance (the compose
+# `postgres` database works) and that role must be allowed to CREATE DATABASE.
+TEST_DB_URL ?= postgres://admin:admin@localhost:7338/postgres?sslmode=disable
 
 GOFILES := $(shell find . -name '*.go' -not -path './vendor/*')
 
-.PHONY: all build vet fmt fmt-check check run-api run-webui dev down clean
+.PHONY: all build vet fmt fmt-check check run-api run-webui test test-short pgup pgdown clean
 
 all: check
 
@@ -35,7 +39,20 @@ fmt-check:
 ## check: fmt-check + vet + build
 check: fmt-check vet build
 
-## run-api: run the api_server (needs Postgres; start it with `make dev`)
+## test: start the throwaway test Postgres, run the full suite, then stop it
+# Backed by dev/docker-compose.test.yml, which mounts no volume, so the database
+# is discarded when the container is torn down (whether the tests pass or fail).
+test:
+	@set -e; \
+	trap 'docker compose -f dev/docker-compose.test.yml down -v' EXIT; \
+	docker compose -f dev/docker-compose.test.yml up -d --wait; \
+	TEST_DB_URL="$(TEST_DB_URL)" $(GO) test -count=1 ./...
+
+## test-short: run only the tests that do not need a database
+test-short:
+	$(GO) test -short ./...
+
+## run-api: run the api_server (needs Postgres; start it with `make pgup`)
 run-api:
 	$(GO) run ./cmd/api_server -listenURL $(API_ADDR) -dbURL "$(DB_URL)"
 
@@ -43,7 +60,7 @@ run-api:
 run-webui:
 	$(GO) run ./cmd/webui_server -listenURL $(WEBUI_ADDR)
 
-## dev: start the local Postgres (docker compose)
+## pgup: start the local Postgres (docker compose, foreground)
 pgup:
 	cd dev && docker compose up
 

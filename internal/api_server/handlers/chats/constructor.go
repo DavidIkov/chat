@@ -21,7 +21,7 @@ func CreateChats(mux *http.ServeMux, services *services.Services) *ChatsHandler 
 	mux.HandleFunc("GET /chat/{"+chatsmiddleware.ChatUIDPathKey+"}/get_messages", requireUser(requireChatMember(handler.GetChatMessagesHandler)))
 	mux.HandleFunc("GET /chat/{"+chatsmiddleware.ChatUIDPathKey+"}/get_members", requireUser(requireChatMember(handler.GetChatMembersHandler)))
 	mux.HandleFunc("POST /chat/{"+chatsmiddleware.ChatUIDPathKey+"}/create_join_link", requireUser(requireChatMember(handler.CreateJoinLinkHandler)))
-	mux.HandleFunc("POST /chat/{"+chatsmiddleware.ChatUIDPathKey+"}/leave", requireUser(handler.LeaveChatHandler))
+	mux.HandleFunc("POST /chat/{"+chatsmiddleware.ChatUIDPathKey+"}/leave", requireUser(requireChatMember(handler.LeaveChatHandler)))
 	mux.HandleFunc("POST /chat/join_chat", requireUser(handler.JoinChatHandler))
 	return &handler
 }

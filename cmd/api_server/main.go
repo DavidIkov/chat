@@ -2,7 +2,6 @@ package main
 
 import (
 	"chat/internal/api_server/handlers"
-	"chat/internal/api_server/handlers/middleware"
 	"chat/internal/api_server/services"
 	"database/sql"
 	"flag"
@@ -32,15 +31,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mux := http.NewServeMux()
-
-	_, err = handlers.CreateHandlers(mux, services)
+	server, err := handlers.NewServer(services)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Println("Started listening on ", *listenURL)
-	if err := http.ListenAndServe(*listenURL, middleware.Recover(mux)); err != nil {
+	if err := http.ListenAndServe(*listenURL, server); err != nil {
 		log.Fatal(err)
 	}
 }
